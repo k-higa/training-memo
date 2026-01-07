@@ -1,5 +1,5 @@
 // Training Memo Backend API Server
-// Version: 1.0.1
+// Version: 1.0.2
 package main
 
 import (
