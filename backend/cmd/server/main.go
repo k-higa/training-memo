@@ -72,14 +72,24 @@ func main() {
 
 	// 種目
 	authGroup.GET("/exercises", workoutHandler.GetExercises)
+	authGroup.GET("/exercises/custom", workoutHandler.GetCustomExercises)
+	authGroup.POST("/exercises/custom", workoutHandler.CreateCustomExercise)
+	authGroup.PUT("/exercises/custom/:id", workoutHandler.UpdateCustomExercise)
+	authGroup.DELETE("/exercises/custom/:id", workoutHandler.DeleteCustomExercise)
+	authGroup.GET("/exercises/:id/progress", workoutHandler.GetExerciseProgress)
 
 	// トレーニング記録
 	authGroup.POST("/workouts", workoutHandler.CreateWorkout)
 	authGroup.GET("/workouts", workoutHandler.GetWorkoutList)
 	authGroup.GET("/workouts/date", workoutHandler.GetWorkoutByDate)
+	authGroup.GET("/workouts/calendar", workoutHandler.GetWorkoutsByMonth)
 	authGroup.GET("/workouts/:id", workoutHandler.GetWorkout)
 	authGroup.PUT("/workouts/:id", workoutHandler.UpdateWorkout)
 	authGroup.DELETE("/workouts/:id", workoutHandler.DeleteWorkout)
+
+	// 統計
+	authGroup.GET("/stats/muscle-groups", workoutHandler.GetMuscleGroupStats)
+	authGroup.GET("/stats/personal-bests", workoutHandler.GetPersonalBests)
 
 	// サーバー起動
 	port := os.Getenv("PORT")

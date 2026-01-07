@@ -200,3 +200,96 @@ func (s *WorkoutService) GetExercisesByMuscleGroup(userID uint64, muscleGroup st
 	return s.exerciseRepo.FindByMuscleGroup(model.MuscleGroup(muscleGroup), userID)
 }
 
+// カレンダー用：月別ワークアウト取得
+func (s *WorkoutService) GetWorkoutsByMonth(userID uint64, year, month int) ([]model.Workout, error) {
+	return s.workoutRepo.FindByUserIDAndMonth(userID, year, month)
+}
+
+// 統計：部位別集計
+func (s *WorkoutService) GetMuscleGroupStats(userID uint64) ([]repository.MuscleGroupStat, error) {
+	return s.workoutRepo.GetMuscleGroupStats(userID)
+}
+
+// 統計：自己ベスト一覧
+func (s *WorkoutService) GetPersonalBests(userID uint64) ([]repository.PersonalBest, error) {
+	return s.workoutRepo.GetPersonalBests(userID)
+}
+
+// 統計：種目の重量推移
+func (s *WorkoutService) GetExerciseProgress(userID uint64, exerciseID uint64) ([]repository.ExerciseProgress, error) {
+	return s.workoutRepo.GetExerciseProgress(userID, exerciseID)
+}
+
+// カスタム種目作成
+type CreateExerciseInput struct {
+	Name        string `json:"name" validate:"required,min=1,max=100"`
+	MuscleGroup string `json:"muscle_group" validate:"required"`
+}
+
+var (
+	ErrExerciseNotFound  = errors.New("exercise not found")
+	ErrExerciseInUse     = errors.New("exercise is in use")
+	ErrNotCustomExercise = errors.New("cannot modify preset exercise")
+)
+
+func (s *WorkoutService) CreateCustomExercise(userID uint64, input *CreateExerciseInput) (*model.Exercise, error) {
+	exercise := &model.Exercise{
+		Name:        input.Name,
+		MuscleGroup: model.MuscleGroup(input.MuscleGroup),
+		IsCustom:    true,
+		UserID:      &userID,
+	}
+
+	if err := s.exerciseRepo.Create(exercise); err != nil {
+		return nil, err
+	}
+
+	return exercise, nil
+}
+
+func (s *WorkoutService) GetCustomExercises(userID uint64) ([]model.Exercise, error) {
+	return s.exerciseRepo.FindCustomByUserID(userID)
+}
+
+func (s *WorkoutService) UpdateCustomExercise(userID uint64, exerciseID uint64, input *CreateExerciseInput) (*model.Exercise, error) {
+	exercise, err := s.exerciseRepo.FindByID(exerciseID)
+	if err != nil {
+		return nil, ErrExerciseNotFound
+	}
+
+	if !exercise.IsCustom || exercise.UserID == nil || *exercise.UserID != userID {
+		return nil, ErrNotCustomExercise
+	}
+
+	exercise.Name = input.Name
+	exercise.MuscleGroup = model.MuscleGroup(input.MuscleGroup)
+
+	if err := s.exerciseRepo.Update(exercise); err != nil {
+		return nil, err
+	}
+
+	return exercise, nil
+}
+
+func (s *WorkoutService) DeleteCustomExercise(userID uint64, exerciseID uint64) error {
+	exercise, err := s.exerciseRepo.FindByID(exerciseID)
+	if err != nil {
+		return ErrExerciseNotFound
+	}
+
+	if !exercise.IsCustom || exercise.UserID == nil || *exercise.UserID != userID {
+		return ErrNotCustomExercise
+	}
+
+	// 使用中かチェック
+	inUse, err := s.exerciseRepo.IsUsedInWorkouts(exerciseID)
+	if err != nil {
+		return err
+	}
+	if inUse {
+		return ErrExerciseInUse
+	}
+
+	return s.exerciseRepo.Delete(exerciseID)
+}
+

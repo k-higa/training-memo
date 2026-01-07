@@ -46,3 +46,29 @@ func (r *ExerciseRepository) Create(exercise *model.Exercise) error {
 	return r.db.Create(exercise).Error
 }
 
+func (r *ExerciseRepository) Update(exercise *model.Exercise) error {
+	return r.db.Save(exercise).Error
+}
+
+func (r *ExerciseRepository) Delete(id uint64) error {
+	return r.db.Delete(&model.Exercise{}, id).Error
+}
+
+func (r *ExerciseRepository) FindCustomByUserID(userID uint64) ([]model.Exercise, error) {
+	var exercises []model.Exercise
+	if err := r.db.Where("is_custom = ? AND user_id = ?", true, userID).
+		Order("muscle_group, name").
+		Find(&exercises).Error; err != nil {
+		return nil, err
+	}
+	return exercises, nil
+}
+
+func (r *ExerciseRepository) IsUsedInWorkouts(exerciseID uint64) (bool, error) {
+	var count int64
+	if err := r.db.Model(&model.WorkoutSet{}).Where("exercise_id = ?", exerciseID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Dumbbell, Home, Plus, History, User, LogOut } from 'lucide-react'
+import { Dumbbell, Home, Plus, History, Calendar, BarChart3, List, LogOut } from 'lucide-react'
 import { removeToken } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
@@ -18,7 +18,10 @@ export function Header() {
   const navItems = [
     { href: '/dashboard', label: 'ホーム', icon: Home },
     { href: '/workout/new', label: '記録', icon: Plus },
+    { href: '/calendar', label: 'カレンダー', icon: Calendar },
     { href: '/history', label: '履歴', icon: History },
+    { href: '/stats', label: '統計', icon: BarChart3 },
+    { href: '/exercises', label: '種目', icon: List },
   ]
 
   return (

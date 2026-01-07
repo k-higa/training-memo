@@ -124,6 +124,13 @@ export const exerciseApi = {
   getAll: () => api.get<Exercise[]>('/api/v1/exercises'),
   getByMuscleGroup: (muscleGroup: string) =>
     api.get<Exercise[]>(`/api/v1/exercises?muscle_group=${muscleGroup}`),
+  getCustom: () => api.get<Exercise[]>('/api/v1/exercises/custom'),
+  createCustom: (data: { name: string; muscle_group: string }) =>
+    api.post<Exercise>('/api/v1/exercises/custom', data),
+  updateCustom: (id: number, data: { name: string; muscle_group: string }) =>
+    api.put<Exercise>(`/api/v1/exercises/custom/${id}`, data),
+  deleteCustom: (id: number) => api.delete(`/api/v1/exercises/custom/${id}`),
+  getProgress: (id: number) => api.get<ExerciseProgress[]>(`/api/v1/exercises/${id}/progress`),
 }
 
 export const workoutApi = {
@@ -144,4 +151,31 @@ export const workoutApi = {
     }
   ) => api.put<Workout>(`/api/v1/workouts/${id}`, data),
   delete: (id: number) => api.delete(`/api/v1/workouts/${id}`),
+  getByMonth: (year: number, month: number) =>
+    api.get<Workout[]>(`/api/v1/workouts/calendar?year=${year}&month=${month}`),
+}
+
+// 統計API Types
+export interface MuscleGroupStat {
+  muscle_group: string
+  workout_count: number
+  set_count: number
+}
+
+export interface PersonalBest {
+  exercise_id: number
+  exercise_name: string
+  muscle_group: string
+  max_weight: number
+}
+
+export interface ExerciseProgress {
+  date: string
+  max_weight: number
+  total_volume: number
+}
+
+export const statsApi = {
+  getMuscleGroupStats: () => api.get<MuscleGroupStat[]>('/api/v1/stats/muscle-groups'),
+  getPersonalBests: () => api.get<PersonalBest[]>('/api/v1/stats/personal-bests'),
 }
