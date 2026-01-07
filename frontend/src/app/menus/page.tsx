@@ -129,7 +129,7 @@ export default function MenusPage() {
                         ))}
                       </div>
                       <p className="text-gray-400 text-sm">
-                        {menu.items?.length || 0}種目
+                        {menu.items?.length || 0}種目 · {menu.items?.reduce((sum, item) => sum + (item.target_sets || 0), 0) || 0}セット
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

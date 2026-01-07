@@ -252,40 +252,59 @@ export default function NewWorkoutPage() {
           {isMenuMode ? (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">トレーニング内容</h2>
-              <div className="space-y-3">
-                {sets.map((set, index) => (
-                  <div
-                    key={set.id}
-                    className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                          <span className="text-purple-400 text-sm font-medium">
-                            {index + 1}
-                          </span>
+              <div className="space-y-4">
+                {/* 種目ごとにグループ化して表示 */}
+                {(() => {
+                  const groupedByExercise: { exerciseId: number; exerciseName: string; muscleGroup: string; sets: typeof sets }[] = []
+                  sets.forEach((set) => {
+                    const existing = groupedByExercise.find((g) => g.exerciseId === set.exerciseId)
+                    if (existing) {
+                      existing.sets.push(set)
+                    } else {
+                      groupedByExercise.push({
+                        exerciseId: set.exerciseId,
+                        exerciseName: set.exerciseName || getExerciseName(set.exerciseId),
+                        muscleGroup: getExerciseMuscleGroup(set.exerciseId),
+                        sets: [set],
+                      })
+                    }
+                  })
+                  return groupedByExercise.map((group, groupIndex) => (
+                    <div
+                      key={`${group.exerciseId}-${groupIndex}`}
+                      className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                          <Dumbbell className="h-5 w-5 text-purple-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">
-                            {set.exerciseName || getExerciseName(set.exerciseId)}
-                          </p>
+                          <p className="text-white font-medium">{group.exerciseName}</p>
                           <p className="text-gray-400 text-xs">
-                            {muscleGroupLabels[getExerciseMuscleGroup(set.exerciseId)] || 'その他'}
+                            {muscleGroupLabels[group.muscleGroup] || 'その他'} · {group.sets.length}セット
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-white">
-                          <span className="text-lg font-semibold">{set.weight || '0'}</span>
-                          <span className="text-gray-400 text-sm ml-1">kg</span>
-                          <span className="text-gray-400 mx-2">×</span>
-                          <span className="text-lg font-semibold">{set.reps}</span>
-                          <span className="text-gray-400 text-sm ml-1">回</span>
-                        </p>
+                      <div className="space-y-2 ml-2">
+                        {group.sets.map((set, setIndex) => (
+                          <div
+                            key={set.id}
+                            className="flex items-center justify-between py-2 px-3 bg-white/5 rounded-lg"
+                          >
+                            <span className="text-gray-400 text-sm">セット {setIndex + 1}</span>
+                            <p className="text-white">
+                              <span className="text-lg font-semibold">{set.weight || '0'}</span>
+                              <span className="text-gray-400 text-sm ml-1">kg</span>
+                              <span className="text-gray-400 mx-2">×</span>
+                              <span className="text-lg font-semibold">{set.reps}</span>
+                              <span className="text-gray-400 text-sm ml-1">回</span>
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                })()}
               </div>
             </div>
           ) : (
