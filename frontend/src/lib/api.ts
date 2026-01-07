@@ -179,3 +179,73 @@ export const statsApi = {
   getMuscleGroupStats: () => api.get<MuscleGroupStat[]>('/api/v1/stats/muscle-groups'),
   getPersonalBests: () => api.get<PersonalBest[]>('/api/v1/stats/personal-bests'),
 }
+
+// メニュー関連
+export interface MenuItem {
+  id: number
+  menu_id: number
+  exercise_id: number
+  order_number: number
+  target_sets: number
+  target_reps: number
+  target_weight?: number
+  note?: string
+  exercise?: Exercise
+}
+
+export interface Menu {
+  id: number
+  user_id: number
+  name: string
+  description?: string
+  items: MenuItem[]
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateMenuInput {
+  name: string
+  description?: string
+  items: {
+    exercise_id: number
+    order_number: number
+    target_sets: number
+    target_reps: number
+    target_weight?: number
+    note?: string
+  }[]
+}
+
+export const menuApi = {
+  getAll: () => api.get<Menu[]>('/api/v1/menus'),
+  getById: (id: number) => api.get<Menu>(`/api/v1/menus/${id}`),
+  create: (data: CreateMenuInput) => api.post<Menu>('/api/v1/menus', data),
+  update: (id: number, data: CreateMenuInput) => api.put<Menu>(`/api/v1/menus/${id}`, data),
+  delete: (id: number) => api.delete(`/api/v1/menus/${id}`),
+}
+
+// 体重記録関連
+export interface BodyWeight {
+  id: number
+  user_id: number
+  date: string
+  weight: number
+  body_fat_percentage?: number
+  created_at: string
+}
+
+export interface CreateBodyWeightInput {
+  date: string
+  weight: number
+  body_fat_percentage?: number
+}
+
+export const bodyWeightApi = {
+  createOrUpdate: (data: CreateBodyWeightInput) =>
+    api.post<BodyWeight>('/api/v1/body-weights', data),
+  getRecords: (limit = 90) => api.get<BodyWeight[]>(`/api/v1/body-weights?limit=${limit}`),
+  getByDateRange: (start: string, end: string) =>
+    api.get<BodyWeight[]>(`/api/v1/body-weights/range?start=${start}&end=${end}`),
+  getLatest: () => api.get<BodyWeight>('/api/v1/body-weights/latest'),
+  delete: (id: number) => api.delete(`/api/v1/body-weights/${id}`),
+}

@@ -40,14 +40,20 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	exerciseRepo := repository.NewExerciseRepository(db)
 	workoutRepo := repository.NewWorkoutRepository(db)
+	menuRepo := repository.NewMenuRepository(db)
+	bodyWeightRepo := repository.NewBodyWeightRepository(db)
 
 	// サービスの初期化
 	authService := service.NewAuthService(userRepo)
 	workoutService := service.NewWorkoutService(workoutRepo, exerciseRepo)
+	menuService := service.NewMenuService(menuRepo, exerciseRepo)
+	bodyWeightService := service.NewBodyWeightService(bodyWeightRepo)
 
 	// ハンドラーの初期化
 	authHandler := handler.NewAuthHandler(authService)
 	workoutHandler := handler.NewWorkoutHandler(workoutService)
+	menuHandler := handler.NewMenuHandler(menuService)
+	bodyWeightHandler := handler.NewBodyWeightHandler(bodyWeightService)
 
 	// ヘルスチェックエンドポイント
 	e.GET("/health", func(c echo.Context) error {
@@ -90,6 +96,20 @@ func main() {
 	// 統計
 	authGroup.GET("/stats/muscle-groups", workoutHandler.GetMuscleGroupStats)
 	authGroup.GET("/stats/personal-bests", workoutHandler.GetPersonalBests)
+
+	// メニュー管理
+	authGroup.POST("/menus", menuHandler.CreateMenu)
+	authGroup.GET("/menus", menuHandler.GetMenus)
+	authGroup.GET("/menus/:id", menuHandler.GetMenu)
+	authGroup.PUT("/menus/:id", menuHandler.UpdateMenu)
+	authGroup.DELETE("/menus/:id", menuHandler.DeleteMenu)
+
+	// 体重記録
+	authGroup.POST("/body-weights", bodyWeightHandler.CreateOrUpdate)
+	authGroup.GET("/body-weights", bodyWeightHandler.GetRecords)
+	authGroup.GET("/body-weights/range", bodyWeightHandler.GetRecordsByDateRange)
+	authGroup.GET("/body-weights/latest", bodyWeightHandler.GetLatest)
+	authGroup.DELETE("/body-weights/:id", bodyWeightHandler.Delete)
 
 	// サーバー起動
 	port := os.Getenv("PORT")

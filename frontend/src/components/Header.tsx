@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Dumbbell, Home, Plus, History, Calendar, BarChart3, List, LogOut } from 'lucide-react'
+import { Dumbbell, Home, Plus, History, Calendar, BarChart3, List, LogOut, ClipboardList, Scale } from 'lucide-react'
 import { removeToken } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
@@ -19,9 +19,9 @@ export function Header() {
     { href: '/dashboard', label: 'ホーム', icon: Home },
     { href: '/workout/new', label: '記録', icon: Plus },
     { href: '/calendar', label: 'カレンダー', icon: Calendar },
-    { href: '/history', label: '履歴', icon: History },
+    { href: '/menus', label: 'メニュー', icon: ClipboardList },
+    { href: '/body-weight', label: '体重', icon: Scale },
     { href: '/stats', label: '統計', icon: BarChart3 },
-    { href: '/exercises', label: '種目', icon: List },
   ]
 
   return (
