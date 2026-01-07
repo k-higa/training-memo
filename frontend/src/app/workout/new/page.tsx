@@ -25,6 +25,7 @@ export default function NewWorkoutPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [existingWorkoutId, setExistingWorkoutId] = useState<number | null>(null)
 
   const muscleGroups = [
     { value: '', label: 'すべて' },
@@ -117,7 +118,19 @@ export default function NewWorkoutPage() {
       router.push('/dashboard')
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message)
+        // 重複エラーの場合
+        if (err.message.includes('Duplicate entry') || err.message.includes('uk_workouts_user_date')) {
+          setError('この日付には既にトレーニング記録があります')
+          // 既存のワークアウトを取得
+          try {
+            const existing = await workoutApi.getByDate(date)
+            setExistingWorkoutId(existing.id)
+          } catch {
+            // 取得に失敗した場合は無視
+          }
+        } else {
+          setError(err.message)
+        }
       } else {
         setError('保存に失敗しました')
       }
@@ -151,7 +164,11 @@ export default function NewWorkoutPage() {
             <input
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                setDate(e.target.value)
+                setError('')
+                setExistingWorkoutId(null)
+              }}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
@@ -286,8 +303,17 @@ export default function NewWorkoutPage() {
 
           {/* エラー表示 */}
           {error && (
-            <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200">
-              {error}
+            <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+              <p className="text-red-200">{error}</p>
+              {existingWorkoutId && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/workout/${existingWorkoutId}`)}
+                  className="mt-3 px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  既存の記録を編集する
+                </button>
+              )}
             </div>
           )}
 
