@@ -125,9 +125,9 @@ make clean           # 全てをクリーンアップ
 
 | サービス | 説明 | ポート |
 |----------|------|--------|
-| frontend | Next.js（ホットリロード対応） | 3000 |
-| backend | Go API（Air によるホットリロード） | 8080 |
-| db | MySQL 8.0 | 3306 |
+| frontend | Next.js（ホットリロード対応） | 3001 |
+| backend | Go API（Air によるホットリロード） | 8081 |
+| db | MySQL 8.0 | 3307 |
 | migrate | golang-migrate（起動時に自動実行） | - |
 
 ## ドキュメント

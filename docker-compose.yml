@@ -7,14 +7,14 @@ services:
       target: development
     container_name: training-memo-frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_API_URL=http://localhost:8081
     depends_on:
       - backend
     networks:
@@ -28,7 +28,7 @@ services:
       target: development
     container_name: training-memo-backend
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - ./backend:/app
     environment:
@@ -50,7 +50,7 @@ services:
     image: mysql:8.0
     container_name: training-memo-db
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=root_password
       - MYSQL_DATABASE=training_memo
@@ -90,4 +90,3 @@ volumes:
 networks:
   training-memo-network:
     driver: bridge
-

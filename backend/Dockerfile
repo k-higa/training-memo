@@ -1,13 +1,13 @@
 # 開発用ステージ
-FROM golang:1.22-alpine AS development
+FROM golang:1.24-alpine AS development
 
 WORKDIR /app
 
 # Air（ホットリロード）のインストール
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.61.7
 
 # 依存関係のキャッシュ
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 
 COPY . .
@@ -17,11 +17,11 @@ EXPOSE 8080
 CMD ["air", "-c", ".air.toml"]
 
 # ビルド用ステージ
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 
 COPY . .
@@ -40,4 +40,3 @@ COPY --from=builder /app/server .
 EXPOSE 8080
 
 CMD ["./server"]
-
