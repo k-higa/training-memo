@@ -54,4 +54,3 @@ func (r *MenuRepository) AddItem(item *model.MenuItem) error {
 func (r *MenuRepository) DeleteItemsByMenuID(menuID uint64) error {
 	return r.db.Where("menu_id = ?", menuID).Delete(&model.MenuItem{}).Error
 }
-
