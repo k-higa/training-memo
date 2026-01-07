@@ -34,10 +34,11 @@ services:
     environment:
       - GO_ENV=development
       - DB_HOST=db
-      - DB_PORT=3306
+      - DB_PORT=5432
       - DB_USER=training_user
       - DB_PASSWORD=training_password
       - DB_NAME=training_memo
+      - DB_SSLMODE=disable
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
     depends_on:
       db:
@@ -45,22 +46,20 @@ services:
     networks:
       - training-memo-network
 
-  # データベース（MySQL）
+  # データベース（PostgreSQL）
   db:
-    image: mysql:8.0
+    image: postgres:16-alpine
     container_name: training-memo-db
     ports:
-      - "3307:3306"
+      - "5432:5432"
     environment:
-      - MYSQL_ROOT_PASSWORD=root_password
-      - MYSQL_DATABASE=training_memo
-      - MYSQL_USER=training_user
-      - MYSQL_PASSWORD=training_password
+      - POSTGRES_DB=training_memo
+      - POSTGRES_USER=training_user
+      - POSTGRES_PASSWORD=training_password
     volumes:
-      - mysql-data:/var/lib/mysql
-      - ./db/init:/docker-entrypoint-initdb.d
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U training_user -d training_memo"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -75,7 +74,7 @@ services:
       - ./db/migrations:/migrations
     command: [
       "-path", "/migrations",
-      "-database", "mysql://training_user:training_password@tcp(db:3306)/training_memo",
+      "-database", "postgres://training_user:training_password@db:5432/training_memo?sslmode=disable",
       "up"
     ]
     depends_on:
@@ -85,7 +84,7 @@ services:
       - training-memo-network
 
 volumes:
-  mysql-data:
+  postgres-data:
 
 networks:
   training-memo-network:

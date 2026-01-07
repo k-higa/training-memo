@@ -1,14 +1,17 @@
+-- muscle_group用のENUM型を作成
+CREATE TYPE muscle_group_type AS ENUM ('chest', 'back', 'shoulders', 'arms', 'legs', 'abs', 'other');
+
 CREATE TABLE IF NOT EXISTS exercises (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    muscle_group ENUM('chest', 'back', 'shoulders', 'arms', 'legs', 'abs', 'other') NOT NULL,
+    muscle_group muscle_group_type NOT NULL,
     is_custom BOOLEAN DEFAULT FALSE,
-    user_id BIGINT UNSIGNED NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_exercises_muscle_group (muscle_group),
-    INDEX idx_exercises_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    user_id BIGINT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_exercises_muscle_group ON exercises(muscle_group);
+CREATE INDEX idx_exercises_user_id ON exercises(user_id);
 
 -- プリセット種目の挿入
 INSERT INTO exercises (name, muscle_group, is_custom) VALUES
@@ -48,4 +51,3 @@ INSERT INTO exercises (name, muscle_group, is_custom) VALUES
 ('レッグレイズ', 'abs', FALSE),
 ('プランク', 'abs', FALSE),
 ('アブローラー', 'abs', FALSE);
-

@@ -10,7 +10,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/training-memo/backend/internal/handler"
@@ -124,16 +124,29 @@ func main() {
 }
 
 func connectDB() (*gorm.DB, error) {
+	// DATABASE_URL環境変数がある場合はそれを使用（Neon等）
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL != "" {
+		db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
+		if err != nil {
+			return nil, err
+		}
+		log.Println("Database connected successfully (using DATABASE_URL)")
+		return db, nil
+	}
+
+	// 個別の環境変数から接続文字列を構築
 	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "3306")
+	port := getEnv("DB_PORT", "5432")
 	user := getEnv("DB_USER", "training_user")
 	password := getEnv("DB_PASSWORD", "training_password")
 	dbname := getEnv("DB_NAME", "training_memo")
+	sslmode := getEnv("DB_SSLMODE", "disable")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		user, password, host, port, dbname)
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		host, port, user, password, dbname, sslmode)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}

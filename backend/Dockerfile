@@ -7,8 +7,8 @@ WORKDIR /app
 RUN go install github.com/air-verse/air@v1.61.7
 
 # 依存関係のキャッシュ
-COPY go.mod ./
-RUN go mod download
+COPY go.mod go.sum* ./
+RUN go mod download || go mod tidy
 
 COPY . .
 
@@ -21,8 +21,8 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-COPY go.mod ./
-RUN go mod download
+COPY go.mod go.sum* ./
+RUN go mod download || go mod tidy
 
 COPY . .
 
