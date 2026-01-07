@@ -1,15 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Header } from '@/components/Header'
-import { exerciseApi, workoutApi, Exercise, ApiError } from '@/lib/api'
+import { exerciseApi, workoutApi, menuApi, Exercise, Menu, ApiError } from '@/lib/api'
 import { isAuthenticated } from '@/lib/auth'
-import { Plus, Trash2, Save, Dumbbell, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, Save, Dumbbell, ChevronDown, ArrowLeft } from 'lucide-react'
 
 interface SetInput {
   id: string
   exerciseId: number
+  exerciseName?: string
   setNumber: number
   weight: string
   reps: string
@@ -17,6 +19,9 @@ interface SetInput {
 
 export default function NewWorkoutPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const menuId = searchParams.get('menu')
+
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [memo, setMemo] = useState('')
   const [sets, setSets] = useState<SetInput[]>([])
@@ -26,6 +31,10 @@ export default function NewWorkoutPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [existingWorkoutId, setExistingWorkoutId] = useState<number | null>(null)
+
+  // メニューから開始した場合の状態
+  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null)
+  const isMenuMode = !!menuId
 
   const muscleGroups = [
     { value: '', label: 'すべて' },
@@ -38,16 +47,53 @@ export default function NewWorkoutPage() {
     { value: 'other', label: 'その他' },
   ]
 
+  const muscleGroupLabels: Record<string, string> = {
+    chest: '胸',
+    back: '背中',
+    shoulders: '肩',
+    arms: '腕',
+    legs: '脚',
+    abs: '腹筋',
+    other: 'その他',
+  }
+
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login')
       return
     }
 
-    const fetchExercises = async () => {
+    const fetchData = async () => {
       try {
-        const data = await exerciseApi.getAll()
-        setExercises(data)
+        const exercisesData = await exerciseApi.getAll()
+        setExercises(exercisesData)
+
+        // メニューIDがある場合はメニューを取得してセットを初期化
+        if (menuId) {
+          try {
+            const menuData = await menuApi.getById(parseInt(menuId, 10))
+            setSelectedMenu(menuData)
+
+            // メニューのアイテムからセットを生成
+            const menuSets: SetInput[] = []
+            menuData.items?.forEach((item) => {
+              // 各種目のターゲットセット数分のセットを作成
+              for (let i = 0; i < item.target_sets; i++) {
+                menuSets.push({
+                  id: crypto.randomUUID(),
+                  exerciseId: item.exercise_id,
+                  exerciseName: item.exercise?.name,
+                  setNumber: menuSets.length + 1,
+                  weight: item.target_weight?.toString() || '',
+                  reps: item.target_reps.toString(),
+                })
+              }
+            })
+            setSets(menuSets)
+          } catch (err) {
+            console.error('Failed to fetch menu', err)
+          }
+        }
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           router.push('/login')
@@ -57,8 +103,8 @@ export default function NewWorkoutPage() {
       }
     }
 
-    fetchExercises()
-  }, [router])
+    fetchData()
+  }, [router, menuId])
 
   const filteredExercises = selectedMuscleGroup
     ? exercises.filter((e) => e.muscle_group === selectedMuscleGroup)
@@ -81,7 +127,6 @@ export default function NewWorkoutPage() {
 
   const removeSet = (id: string) => {
     const newSets = sets.filter((set) => set.id !== id)
-    // セット番号を振り直す
     setSets(newSets.map((set, index) => ({ ...set, setNumber: index + 1 })))
   }
 
@@ -118,10 +163,8 @@ export default function NewWorkoutPage() {
       router.push('/dashboard')
     } catch (err) {
       if (err instanceof ApiError) {
-        // 重複エラーの場合
         if (err.message.includes('Duplicate entry') || err.message.includes('uk_workouts_user_date')) {
           setError('この日付には既にトレーニング記録があります')
-          // 既存のワークアウトを取得
           try {
             const existing = await workoutApi.getByDate(date)
             setExistingWorkoutId(existing.id)
@@ -137,6 +180,17 @@ export default function NewWorkoutPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // 種目名を取得するヘルパー
+  const getExerciseName = (exerciseId: number) => {
+    const exercise = exercises.find((e) => e.id === exerciseId)
+    return exercise?.name || '不明な種目'
+  }
+
+  const getExerciseMuscleGroup = (exerciseId: number) => {
+    const exercise = exercises.find((e) => e.id === exerciseId)
+    return exercise?.muscle_group || 'other'
   }
 
   if (loading) {
@@ -155,7 +209,28 @@ export default function NewWorkoutPage() {
       <Header />
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <h1 className="text-2xl font-bold text-white mb-6">トレーニング記録</h1>
+        {isMenuMode && (
+          <Link
+            href="/menus"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            メニュー一覧に戻る
+          </Link>
+        )}
+
+        <h1 className="text-2xl font-bold text-white mb-2">トレーニング記録</h1>
+
+        {/* メニューモードの場合はメニュー名を表示 */}
+        {selectedMenu && (
+          <div className="mb-6 p-4 bg-purple-500/20 rounded-xl border border-purple-500/30">
+            <p className="text-purple-300 text-sm">選択中のメニュー</p>
+            <p className="text-white font-semibold text-lg">{selectedMenu.name}</p>
+            {selectedMenu.description && (
+              <p className="text-gray-400 text-sm mt-1">{selectedMenu.description}</p>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 日付 */}
@@ -173,119 +248,163 @@ export default function NewWorkoutPage() {
             />
           </div>
 
-          {/* 部位フィルター */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              部位でフィルター
-            </label>
-            <div className="relative">
-              <select
-                value={selectedMuscleGroup}
-                onChange={(e) => setSelectedMuscleGroup(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                {muscleGroups.map((group) => (
-                  <option key={group.value} value={group.value} className="bg-slate-800">
-                    {group.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* セット一覧 */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">セット</h2>
-              <button
-                type="button"
-                onClick={addSet}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                セットを追加
-              </button>
-            </div>
-
-            {sets.length === 0 ? (
-              <div className="p-8 bg-white/5 rounded-2xl border border-white/10 text-center">
-                <Dumbbell className="h-12 w-12 text-gray-500 mx-auto mb-3" />
-                <p className="text-gray-400">セットを追加してトレーニングを記録しましょう</p>
-              </div>
-            ) : (
+          {/* メニューモードの場合はセット内容を表示（編集不可） */}
+          {isMenuMode ? (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-white">トレーニング内容</h2>
               <div className="space-y-3">
                 {sets.map((set, index) => (
                   <div
                     key={set.id}
                     className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-purple-400">
-                        セット {index + 1}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeSet(set.id)}
-                        className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">種目</label>
-                        <select
-                          value={set.exerciseId}
-                          onChange={(e) =>
-                            updateSet(set.id, 'exerciseId', parseInt(e.target.value, 10))
-                          }
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        >
-                          <option value={0} className="bg-slate-800">
-                            選択してください
-                          </option>
-                          {filteredExercises.map((exercise) => (
-                            <option
-                              key={exercise.id}
-                              value={exercise.id}
-                              className="bg-slate-800"
-                            >
-                              {exercise.name}
-                            </option>
-                          ))}
-                        </select>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                          <span className="text-purple-400 text-sm font-medium">
+                            {index + 1}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">
+                            {set.exerciseName || getExerciseName(set.exerciseId)}
+                          </p>
+                          <p className="text-gray-400 text-xs">
+                            {muscleGroupLabels[getExerciseMuscleGroup(set.exerciseId)] || 'その他'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">重量 (kg)</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          value={set.weight}
-                          onChange={(e) => updateSet(set.id, 'weight', e.target.value)}
-                          placeholder="0"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">回数</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={set.reps}
-                          onChange={(e) => updateSet(set.id, 'reps', e.target.value)}
-                          placeholder="0"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
+                      <div className="text-right">
+                        <p className="text-white">
+                          <span className="text-lg font-semibold">{set.weight || '0'}</span>
+                          <span className="text-gray-400 text-sm ml-1">kg</span>
+                          <span className="text-gray-400 mx-2">×</span>
+                          <span className="text-lg font-semibold">{set.reps}</span>
+                          <span className="text-gray-400 text-sm ml-1">回</span>
+                        </p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              {/* 通常モード：部位フィルター */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  部位でフィルター
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedMuscleGroup}
+                    onChange={(e) => setSelectedMuscleGroup(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {muscleGroups.map((group) => (
+                      <option key={group.value} value={group.value} className="bg-slate-800">
+                        {group.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 通常モード：セット一覧（編集可能） */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-white">セット</h2>
+                  <button
+                    type="button"
+                    onClick={addSet}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    セットを追加
+                  </button>
+                </div>
+
+                {sets.length === 0 ? (
+                  <div className="p-8 bg-white/5 rounded-2xl border border-white/10 text-center">
+                    <Dumbbell className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+                    <p className="text-gray-400">セットを追加してトレーニングを記録しましょう</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sets.map((set, index) => (
+                      <div
+                        key={set.id}
+                        className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-purple-400">
+                            セット {index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeSet(set.id)}
+                            className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">種目</label>
+                            <select
+                              value={set.exerciseId}
+                              onChange={(e) =>
+                                updateSet(set.id, 'exerciseId', parseInt(e.target.value, 10))
+                              }
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value={0} className="bg-slate-800">
+                                選択してください
+                              </option>
+                              {filteredExercises.map((exercise) => (
+                                <option
+                                  key={exercise.id}
+                                  value={exercise.id}
+                                  className="bg-slate-800"
+                                >
+                                  {exercise.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">重量 (kg)</label>
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              value={set.weight}
+                              onChange={(e) => updateSet(set.id, 'weight', e.target.value)}
+                              placeholder="0"
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">回数</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={set.reps}
+                              onChange={(e) => updateSet(set.id, 'reps', e.target.value)}
+                              placeholder="0"
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* メモ */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
@@ -331,4 +450,3 @@ export default function NewWorkoutPage() {
     </div>
   )
 }
-
