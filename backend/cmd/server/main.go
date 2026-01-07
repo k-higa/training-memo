@@ -7,9 +7,14 @@ import (
 	"os"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echoMiddleware "github.com/labstack/echo/v4/middleware"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+
+	"github.com/training-memo/backend/internal/handler"
+	"github.com/training-memo/backend/internal/middleware"
+	"github.com/training-memo/backend/internal/repository"
+	"github.com/training-memo/backend/internal/service"
 )
 
 func main() {
@@ -17,10 +22,10 @@ func main() {
 	e := echo.New()
 
 	// ミドルウェアの設定
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:3000"},
+	e.Use(echoMiddleware.Logger())
+	e.Use(echoMiddleware.Recover())
+	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:3000", "http://localhost:3001"},
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 	}))
@@ -30,6 +35,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
+
+	// リポジトリの初期化
+	userRepo := repository.NewUserRepository(db)
+	exerciseRepo := repository.NewExerciseRepository(db)
+	workoutRepo := repository.NewWorkoutRepository(db)
+
+	// サービスの初期化
+	authService := service.NewAuthService(userRepo)
+	workoutService := service.NewWorkoutService(workoutRepo, exerciseRepo)
+
+	// ハンドラーの初期化
+	authHandler := handler.NewAuthHandler(authService)
+	workoutHandler := handler.NewWorkoutHandler(workoutService)
 
 	// ヘルスチェックエンドポイント
 	e.GET("/health", func(c echo.Context) error {
@@ -41,14 +59,27 @@ func main() {
 	// API v1 グループ
 	v1 := e.Group("/api/v1")
 
-	// TODO: ルートの追加
-	v1.GET("/", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{
-			"message": "Welcome to Training Memo API",
-		})
-	})
+	// 認証エンドポイント（認証不要）
+	v1.POST("/auth/register", authHandler.Register)
+	v1.POST("/auth/login", authHandler.Login)
 
-	_ = db // TODO: ハンドラーに渡す
+	// 認証が必要なエンドポイント
+	authGroup := v1.Group("")
+	authGroup.Use(middleware.AuthMiddleware())
+
+	// ユーザー
+	authGroup.GET("/auth/me", authHandler.Me)
+
+	// 種目
+	authGroup.GET("/exercises", workoutHandler.GetExercises)
+
+	// トレーニング記録
+	authGroup.POST("/workouts", workoutHandler.CreateWorkout)
+	authGroup.GET("/workouts", workoutHandler.GetWorkoutList)
+	authGroup.GET("/workouts/date", workoutHandler.GetWorkoutByDate)
+	authGroup.GET("/workouts/:id", workoutHandler.GetWorkout)
+	authGroup.PUT("/workouts/:id", workoutHandler.UpdateWorkout)
+	authGroup.DELETE("/workouts/:id", workoutHandler.DeleteWorkout)
 
 	// サーバー起動
 	port := os.Getenv("PORT")
@@ -56,6 +87,7 @@ func main() {
 		port = "8080"
 	}
 
+	log.Printf("Server starting on port %s", port)
 	e.Logger.Fatal(e.Start(":" + port))
 }
 
@@ -84,4 +116,3 @@ func getEnv(key, defaultValue string) string {
 	}
 	return defaultValue
 }
-

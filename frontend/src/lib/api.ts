@@ -1,21 +1,42 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+import { getToken } from './auth'
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
 
 export async function fetchAPI<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
+  const token = getToken()
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options?.headers as Record<string, string>,
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
 
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
     ...options,
+    headers,
   })
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`)
+    const errorData = await response.json().catch(() => ({}))
+    throw new ApiError(response.status, errorData.error || `API Error: ${response.status}`)
+  }
+
+  if (response.status === 204) {
+    return {} as T
   }
 
   return response.json()
@@ -39,3 +60,88 @@ export const api = {
     }),
 }
 
+// API Types
+export interface User {
+  id: number
+  email: string
+  name: string
+  height?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+}
+
+export interface Exercise {
+  id: number
+  name: string
+  muscle_group: string
+  is_custom: boolean
+  user_id?: number
+}
+
+export interface WorkoutSet {
+  id: number
+  workout_id: number
+  exercise_id: number
+  set_number: number
+  weight: number
+  reps: number
+  exercise?: Exercise
+}
+
+export interface Workout {
+  id: number
+  user_id: number
+  date: string
+  memo?: string
+  sets: WorkoutSet[]
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkoutListResponse {
+  workouts: Workout[]
+  total: number
+  page: number
+  per_page: number
+  total_pages: number
+}
+
+// API Functions
+export const authApi = {
+  register: (data: { email: string; password: string; name: string }) =>
+    api.post<AuthResponse>('/api/v1/auth/register', data),
+  login: (data: { email: string; password: string }) =>
+    api.post<AuthResponse>('/api/v1/auth/login', data),
+  me: () => api.get<User>('/api/v1/auth/me'),
+}
+
+export const exerciseApi = {
+  getAll: () => api.get<Exercise[]>('/api/v1/exercises'),
+  getByMuscleGroup: (muscleGroup: string) =>
+    api.get<Exercise[]>(`/api/v1/exercises?muscle_group=${muscleGroup}`),
+}
+
+export const workoutApi = {
+  create: (data: {
+    date: string
+    memo?: string
+    sets: { exercise_id: number; set_number: number; weight: number; reps: number }[]
+  }) => api.post<Workout>('/api/v1/workouts', data),
+  getList: (page = 1, perPage = 20) =>
+    api.get<WorkoutListResponse>(`/api/v1/workouts?page=${page}&per_page=${perPage}`),
+  getByDate: (date: string) => api.get<Workout>(`/api/v1/workouts/date?date=${date}`),
+  getById: (id: number) => api.get<Workout>(`/api/v1/workouts/${id}`),
+  update: (
+    id: number,
+    data: {
+      memo?: string
+      sets: { exercise_id: number; set_number: number; weight: number; reps: number }[]
+    }
+  ) => api.put<Workout>(`/api/v1/workouts/${id}`, data),
+  delete: (id: number) => api.delete(`/api/v1/workouts/${id}`),
+}
