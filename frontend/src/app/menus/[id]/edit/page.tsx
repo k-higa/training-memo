@@ -304,13 +304,15 @@ export default function EditMenuPage() {
 
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-xs text-gray-400 mb-1">セット数</label>
+                          <label className="block text-xs text-gray-400 mb-1">重量 (kg)</label>
                           <input
                             type="number"
-                            min="1"
-                            value={item.targetSets}
-                            onChange={(e) => updateItem(item.id, 'targetSets', e.target.value)}
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            step="0.5"
+                            min="0"
+                            value={item.targetWeight}
+                            onChange={(e) => updateItem(item.id, 'targetWeight', e.target.value)}
+                            placeholder="任意"
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
                           />
                         </div>
                         <div>
@@ -324,15 +326,13 @@ export default function EditMenuPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-400 mb-1">重量 (kg)</label>
+                          <label className="block text-xs text-gray-400 mb-1">セット数</label>
                           <input
                             type="number"
-                            step="0.5"
-                            min="0"
-                            value={item.targetWeight}
-                            onChange={(e) => updateItem(item.id, 'targetWeight', e.target.value)}
-                            placeholder="任意"
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            min="1"
+                            value={item.targetSets}
+                            onChange={(e) => updateItem(item.id, 'targetSets', e.target.value)}
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                           />
                         </div>
                       </div>

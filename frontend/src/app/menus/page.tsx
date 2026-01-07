@@ -160,8 +160,8 @@ export default function MenusPage() {
                             {item.exercise?.name || '不明な種目'}
                           </span>
                           <span className="text-gray-400 text-xs">
-                            {item.target_sets}セット × {item.target_reps}回
-                            {item.target_weight && ` @ ${item.target_weight}kg`}
+                            {item.target_weight ? `${item.target_weight}kg × ` : ''}
+                            {item.target_reps}回 × {item.target_sets}セット
                           </span>
                         </div>
                       ))}
