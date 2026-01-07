@@ -90,7 +90,7 @@ export default function StatsPage() {
     setLoadingProgress(true)
     try {
       const data = await exerciseApi.getProgress(exerciseId)
-      setExerciseProgress(data)
+      setExerciseProgress(data || [])
     } catch (error) {
       console.error('Failed to fetch progress', error)
     } finally {
@@ -248,7 +248,7 @@ export default function StatsPage() {
               <div className="h-64 flex items-center justify-center text-gray-400">
                 読み込み中...
               </div>
-            ) : exerciseProgress.length > 0 ? (
+            ) : exerciseProgress && exerciseProgress.length > 0 ? (
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={exerciseProgress}>
