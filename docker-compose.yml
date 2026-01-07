@@ -1,0 +1,93 @@
+services:
+  # フロントエンド（Next.js）
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: training-memo-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - training-memo-network
+
+  # バックエンド（Go API）
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: training-memo-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+    environment:
+      - GO_ENV=development
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=training_user
+      - DB_PASSWORD=training_password
+      - DB_NAME=training_memo
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - training-memo-network
+
+  # データベース（MySQL）
+  db:
+    image: mysql:8.0
+    container_name: training-memo-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=training_memo
+      - MYSQL_USER=training_user
+      - MYSQL_PASSWORD=training_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - training-memo-network
+
+  # DBマイグレーション
+  migrate:
+    image: migrate/migrate:latest
+    container_name: training-memo-migrate
+    volumes:
+      - ./db/migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "mysql://training_user:training_password@tcp(db:3306)/training_memo",
+      "up"
+    ]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - training-memo-network
+
+volumes:
+  mysql-data:
+
+networks:
+  training-memo-network:
+    driver: bridge
+
