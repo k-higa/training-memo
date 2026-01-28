@@ -68,13 +68,21 @@ export default function NewMenuPage() {
   const addItem = () => {
     const newItem: MenuItemInput = {
       id: crypto.randomUUID(),
-      exerciseId: filteredExercises[0]?.id || exercises[0]?.id || 0,
+      exerciseId: 0,
       targetSets: '3',
       targetReps: '10',
       targetWeight: '',
       note: '',
     }
     setItems([...items, newItem])
+  }
+
+  const getExerciseOptions = (currentExerciseId: number) => {
+    const selectedExercise = exercises.find((e) => e.id === currentExerciseId)
+    if (selectedExercise && !filteredExercises.some((e) => e.id === currentExerciseId)) {
+      return [...filteredExercises, selectedExercise]
+    }
+    return filteredExercises
   }
 
   const updateItem = (id: string, field: keyof MenuItemInput, value: string | number) => {
@@ -266,7 +274,7 @@ export default function NewMenuPage() {
                           <option value={0} className="bg-slate-800">
                             選択してください
                           </option>
-                          {filteredExercises.map((exercise) => (
+                          {getExerciseOptions(item.exerciseId).map((exercise) => (
                             <option
                               key={exercise.id}
                               value={exercise.id}
