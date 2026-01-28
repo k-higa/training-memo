@@ -21,8 +21,9 @@ function NewWorkoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const menuId = searchParams.get('menu')
+  const dateParam = searchParams.get('date')
 
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState(dateParam || new Date().toISOString().split('T')[0])
   const [memo, setMemo] = useState('')
   const [sets, setSets] = useState<SetInput[]>([])
   const [exercises, setExercises] = useState<Exercise[]>([])
@@ -163,7 +164,7 @@ function NewWorkoutContent() {
       router.push('/dashboard')
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.message.includes('Duplicate entry') || err.message.includes('uk_workouts_user_date')) {
+        if (err.message.includes('Duplicate entry') || err.message.includes('uk_workouts_user_date') || err.message.includes('duplicate key')) {
           setError('この日付には既にトレーニング記録があります')
           try {
             const existing = await workoutApi.getByDate(date)
@@ -376,6 +377,19 @@ function NewWorkoutContent() {
                             <option value={0} className="bg-slate-800">
                               選択してください
                             </option>
+                            {/* 選択中の種目がフィルタリング後のリストにない場合、それを追加 */}
+                            {set.exerciseId !== 0 && !filteredExercises.find(e => e.id === set.exerciseId) && (() => {
+                              const selectedExercise = exercises.find(e => e.id === set.exerciseId)
+                              return selectedExercise ? (
+                                <option
+                                  key={selectedExercise.id}
+                                  value={selectedExercise.id}
+                                  className="bg-slate-800"
+                                >
+                                  {selectedExercise.name}（{muscleGroupLabels[selectedExercise.muscle_group] || 'その他'}）
+                                </option>
+                              ) : null
+                            })()}
                             {filteredExercises.map((exercise) => (
                               <option
                                 key={exercise.id}

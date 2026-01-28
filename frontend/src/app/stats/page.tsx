@@ -85,7 +85,13 @@ export default function StatsPage() {
     fetchData()
   }, [router])
 
-  const handleExerciseSelect = async (exerciseId: number) => {
+  const handleExerciseSelect = async (value: string) => {
+    if (!value) {
+      setSelectedExercise(null)
+      setExerciseProgress([])
+      return
+    }
+    const exerciseId = parseInt(value, 10)
     setSelectedExercise(exerciseId)
     setLoadingProgress(true)
     try {
@@ -110,7 +116,7 @@ export default function StatsPage() {
   }
 
   // 部位別統計のチャートデータ
-  const muscleChartData = muscleGroupStats.map((stat) => ({
+  const muscleChartData = (muscleGroupStats || []).map((stat) => ({
     name: muscleGroupLabels[stat.muscle_group] || stat.muscle_group,
     workouts: stat.workout_count,
     sets: stat.set_count,
@@ -118,7 +124,7 @@ export default function StatsPage() {
   }))
 
   // 種目別自己ベストをグループ化
-  const groupedBests = personalBests.reduce((acc, best) => {
+  const groupedBests = (personalBests || []).reduce((acc, best) => {
     const group = muscleGroupLabels[best.muscle_group] || best.muscle_group
     if (!acc[group]) {
       acc[group] = []
@@ -228,7 +234,7 @@ export default function StatsPage() {
               <div className="relative">
                 <select
                   value={selectedExercise || ''}
-                  onChange={(e) => handleExerciseSelect(parseInt(e.target.value, 10))}
+                  onChange={(e) => handleExerciseSelect(e.target.value)}
                   className="appearance-none px-4 py-2 pr-10 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="" className="bg-slate-800">

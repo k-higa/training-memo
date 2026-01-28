@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/training-memo/backend/internal/middleware"
 	"github.com/training-memo/backend/internal/service"
 )
 
@@ -17,7 +18,7 @@ func NewBodyWeightHandler(bodyWeightService *service.BodyWeightService) *BodyWei
 }
 
 func (h *BodyWeightHandler) CreateOrUpdate(c echo.Context) error {
-	userID := c.Get("user_id").(uint64)
+	userID := middleware.GetUserID(c)
 
 	var input service.CreateBodyWeightInput
 	if err := c.Bind(&input); err != nil {
@@ -43,7 +44,7 @@ func (h *BodyWeightHandler) CreateOrUpdate(c echo.Context) error {
 }
 
 func (h *BodyWeightHandler) GetRecords(c echo.Context) error {
-	userID := c.Get("user_id").(uint64)
+	userID := middleware.GetUserID(c)
 
 	limitStr := c.QueryParam("limit")
 	limit := 90 // デフォルト90日分
@@ -64,7 +65,7 @@ func (h *BodyWeightHandler) GetRecords(c echo.Context) error {
 }
 
 func (h *BodyWeightHandler) GetRecordsByDateRange(c echo.Context) error {
-	userID := c.Get("user_id").(uint64)
+	userID := middleware.GetUserID(c)
 
 	startDate := c.QueryParam("start")
 	endDate := c.QueryParam("end")
@@ -86,7 +87,7 @@ func (h *BodyWeightHandler) GetRecordsByDateRange(c echo.Context) error {
 }
 
 func (h *BodyWeightHandler) GetLatest(c echo.Context) error {
-	userID := c.Get("user_id").(uint64)
+	userID := middleware.GetUserID(c)
 
 	record, err := h.bodyWeightService.GetLatest(userID)
 	if err != nil {
@@ -99,7 +100,7 @@ func (h *BodyWeightHandler) GetLatest(c echo.Context) error {
 }
 
 func (h *BodyWeightHandler) Delete(c echo.Context) error {
-	userID := c.Get("user_id").(uint64)
+	userID := middleware.GetUserID(c)
 
 	recordID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {

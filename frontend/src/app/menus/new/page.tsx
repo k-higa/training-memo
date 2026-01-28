@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Header } from '@/components/Header'
 import { menuApi, exerciseApi, Exercise, ApiError } from '@/lib/api'
 import { isAuthenticated } from '@/lib/auth'
-import { ArrowLeft, Plus, Trash2, Save, GripVertical, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, ChevronDown } from 'lucide-react'
 
 interface MenuItemInput {
   id: string
@@ -246,12 +246,9 @@ export default function NewMenuPage() {
                     className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm font-medium text-purple-400">
-                          種目 {index + 1}
-                        </span>
-                      </div>
+                      <span className="text-sm font-medium text-purple-400">
+                        種目 {index + 1}
+                      </span>
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}

@@ -39,20 +39,20 @@ backend-shell:
 	docker compose exec backend sh
 
 db-shell:
-	docker compose exec db mysql -u training_user -ptraining_password training_memo
+	docker compose exec db psql -U training_user -d training_memo
 
 # マイグレーション
 migrate-up:
-	docker compose run --rm migrate -path /migrations -database "mysql://training_user:training_password@tcp(db:3306)/training_memo" up
+	docker compose run --rm migrate -path /migrations -database "postgres://training_user:training_password@db:5432/training_memo?sslmode=disable" up
 
 migrate-down:
-	docker compose run --rm migrate -path /migrations -database "mysql://training_user:training_password@tcp(db:3306)/training_memo" down 1
+	docker compose run --rm migrate -path /migrations -database "postgres://training_user:training_password@db:5432/training_memo?sslmode=disable" down 1
 
 migrate-drop:
-	docker compose run --rm migrate -path /migrations -database "mysql://training_user:training_password@tcp(db:3306)/training_memo" drop -f
+	docker compose run --rm migrate -path /migrations -database "postgres://training_user:training_password@db:5432/training_memo?sslmode=disable" drop -f
 
 migrate-version:
-	docker compose run --rm migrate -path /migrations -database "mysql://training_user:training_password@tcp(db:3306)/training_memo" version
+	docker compose run --rm migrate -path /migrations -database "postgres://training_user:training_password@db:5432/training_memo?sslmode=disable" version
 
 # マイグレーションファイル作成（例: make migrate-create name=create_xxx_table）
 migrate-create:
@@ -80,7 +80,7 @@ help:
 	@echo "  make ps             - コンテナの状態を表示"
 	@echo "  make frontend-shell - フロントエンドのシェルに入る"
 	@echo "  make backend-shell  - バックエンドのシェルに入る"
-	@echo "  make db-shell       - MySQLシェルに入る"
+	@echo "  make db-shell       - PostgreSQLシェルに入る"
 	@echo "  make migrate-up     - マイグレーションを実行"
 	@echo "  make migrate-down   - マイグレーションをロールバック"
 	@echo "  make migrate-create - マイグレーションファイルを作成"
