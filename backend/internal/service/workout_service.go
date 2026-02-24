@@ -63,22 +63,19 @@ func (s *WorkoutService) CreateWorkout(userID uint64, input *CreateWorkoutInput)
 		Memo:   input.Memo,
 	}
 
-	if err := s.workoutRepo.Create(workout); err != nil {
-		return nil, err
-	}
-
-	// セットを追加
-	for _, setInput := range input.Sets {
-		set := &model.WorkoutSet{
-			WorkoutID:  workout.ID,
+	sets := make([]*model.WorkoutSet, len(input.Sets))
+	for i, setInput := range input.Sets {
+		sets[i] = &model.WorkoutSet{
 			ExerciseID: setInput.ExerciseID,
 			SetNumber:  setInput.SetNumber,
 			Weight:     setInput.Weight,
 			Reps:       setInput.Reps,
 		}
-		if err := s.workoutRepo.AddSet(set); err != nil {
-			return nil, err
-		}
+	}
+
+	// ワークアウトとセットをアトミックに作成
+	if err := s.workoutRepo.CreateWithSets(workout, sets); err != nil {
+		return nil, err
 	}
 
 	// セット情報を含めて再取得
@@ -157,23 +154,20 @@ func (s *WorkoutService) UpdateWorkout(userID, workoutID uint64, input *UpdateWo
 		return nil, err
 	}
 
-	// 既存のセットを削除
-	if err := s.workoutRepo.DeleteSetsByWorkoutID(workoutID); err != nil {
-		return nil, err
-	}
-
-	// 新しいセットを追加
-	for _, setInput := range input.Sets {
-		set := &model.WorkoutSet{
+	sets := make([]*model.WorkoutSet, len(input.Sets))
+	for i, setInput := range input.Sets {
+		sets[i] = &model.WorkoutSet{
 			WorkoutID:  workoutID,
 			ExerciseID: setInput.ExerciseID,
 			SetNumber:  setInput.SetNumber,
 			Weight:     setInput.Weight,
 			Reps:       setInput.Reps,
 		}
-		if err := s.workoutRepo.AddSet(set); err != nil {
-			return nil, err
-		}
+	}
+
+	// 既存セットの削除と新セットの追加をアトミックに実行
+	if err := s.workoutRepo.ReplaceSetsByWorkoutID(workoutID, sets); err != nil {
+		return nil, err
 	}
 
 	return s.workoutRepo.FindByID(workoutID)

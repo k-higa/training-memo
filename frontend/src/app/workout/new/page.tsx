@@ -183,17 +183,6 @@ function NewWorkoutContent() {
     }
   }
 
-  // 種目名を取得するヘルパー
-  const getExerciseName = (exerciseId: number) => {
-    const exercise = exercises.find((e) => e.id === exerciseId)
-    return exercise?.name || '不明な種目'
-  }
-
-  const getExerciseMuscleGroup = (exerciseId: number) => {
-    const exercise = exercises.find((e) => e.id === exerciseId)
-    return exercise?.muscle_group || 'other'
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-64px)]">
@@ -243,195 +232,132 @@ function NewWorkoutContent() {
           />
         </div>
 
-        {/* メニューモードの場合はセット内容を表示（編集不可） */}
-        {isMenuMode ? (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">トレーニング内容</h2>
-            <div className="space-y-4">
-              {/* 種目ごとにグループ化して表示 */}
-              {(() => {
-                const groupedByExercise: { exerciseId: number; exerciseName: string; muscleGroup: string; sets: typeof sets }[] = []
-                sets.forEach((set) => {
-                  const existing = groupedByExercise.find((g) => g.exerciseId === set.exerciseId)
-                  if (existing) {
-                    existing.sets.push(set)
-                  } else {
-                    groupedByExercise.push({
-                      exerciseId: set.exerciseId,
-                      exerciseName: set.exerciseName || getExerciseName(set.exerciseId),
-                      muscleGroup: getExerciseMuscleGroup(set.exerciseId),
-                      sets: [set],
-                    })
-                  }
-                })
-                return groupedByExercise.map((group, groupIndex) => (
-                  <div
-                    key={`${group.exerciseId}-${groupIndex}`}
-                    className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                        <Dumbbell className="h-5 w-5 text-purple-400" />
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{group.exerciseName}</p>
-                        <p className="text-gray-400 text-xs">
-                          {muscleGroupLabels[group.muscleGroup] || 'その他'} · {group.sets.length}セット
-                        </p>
-                      </div>
+        {/* 部位フィルター */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            部位でフィルター
+          </label>
+          <div className="relative">
+            <select
+              value={selectedMuscleGroup}
+              onChange={(e) => setSelectedMuscleGroup(e.target.value)}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              {muscleGroups.map((group) => (
+                <option key={group.value} value={group.value} className="bg-slate-800">
+                  {group.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* セット一覧（編集可能） */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">セット</h2>
+            <button
+              type="button"
+              onClick={addSet}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              セットを追加
+            </button>
+          </div>
+
+          {sets.length === 0 ? (
+            <div className="p-8 bg-white/5 rounded-2xl border border-white/10 text-center">
+              <Dumbbell className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+              <p className="text-gray-400">セットを追加してトレーニングを記録しましょう</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sets.map((set, index) => (
+                <div
+                  key={set.id}
+                  className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-purple-400">
+                      セット {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeSet(set.id)}
+                      className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">種目</label>
+                      <select
+                        value={set.exerciseId}
+                        onChange={(e) =>
+                          updateSet(set.id, 'exerciseId', parseInt(e.target.value, 10))
+                        }
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value={0} className="bg-slate-800">
+                          選択してください
+                        </option>
+                        {/* 選択中の種目がフィルタリング後のリストにない場合、それを追加 */}
+                        {set.exerciseId !== 0 && !filteredExercises.find(e => e.id === set.exerciseId) && (() => {
+                          const selectedExercise = exercises.find(e => e.id === set.exerciseId)
+                          return selectedExercise ? (
+                            <option
+                              key={selectedExercise.id}
+                              value={selectedExercise.id}
+                              className="bg-slate-800"
+                            >
+                              {selectedExercise.name}（{muscleGroupLabels[selectedExercise.muscle_group] || 'その他'}）
+                            </option>
+                          ) : null
+                        })()}
+                        {filteredExercises.map((exercise) => (
+                          <option
+                            key={exercise.id}
+                            value={exercise.id}
+                            className="bg-slate-800"
+                          >
+                            {exercise.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="space-y-2 ml-2">
-                      {group.sets.map((set, setIndex) => (
-                        <div
-                          key={set.id}
-                          className="flex items-center justify-between py-2 px-3 bg-white/5 rounded-lg"
-                        >
-                          <span className="text-gray-400 text-sm">セット {setIndex + 1}</span>
-                          <p className="text-white">
-                            <span className="text-lg font-semibold">{set.weight || '0'}</span>
-                            <span className="text-gray-400 text-sm ml-1">kg</span>
-                            <span className="text-gray-400 mx-2">×</span>
-                            <span className="text-lg font-semibold">{set.reps}</span>
-                            <span className="text-gray-400 text-sm ml-1">回</span>
-                          </p>
-                        </div>
-                      ))}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">重量 (kg)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={set.weight}
+                        onChange={(e) => updateSet(set.id, 'weight', e.target.value)}
+                        placeholder="0"
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">回数</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={set.reps}
+                        onChange={(e) => updateSet(set.id, 'reps', e.target.value)}
+                        placeholder="0"
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
                     </div>
                   </div>
-                ))
-              })()}
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* 通常モード：部位フィルター */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                部位でフィルター
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedMuscleGroup}
-                  onChange={(e) => setSelectedMuscleGroup(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  {muscleGroups.map((group) => (
-                    <option key={group.value} value={group.value} className="bg-slate-800">
-                      {group.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* 通常モード：セット一覧（編集可能） */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">セット</h2>
-                <button
-                  type="button"
-                  onClick={addSet}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  セットを追加
-                </button>
-              </div>
-
-              {sets.length === 0 ? (
-                <div className="p-8 bg-white/5 rounded-2xl border border-white/10 text-center">
-                  <Dumbbell className="h-12 w-12 text-gray-500 mx-auto mb-3" />
-                  <p className="text-gray-400">セットを追加してトレーニングを記録しましょう</p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {sets.map((set, index) => (
-                    <div
-                      key={set.id}
-                      className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-purple-400">
-                          セット {index + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeSet(set.id)}
-                          className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs text-gray-400 mb-1">種目</label>
-                          <select
-                            value={set.exerciseId}
-                            onChange={(e) =>
-                              updateSet(set.id, 'exerciseId', parseInt(e.target.value, 10))
-                            }
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          >
-                            <option value={0} className="bg-slate-800">
-                              選択してください
-                            </option>
-                            {/* 選択中の種目がフィルタリング後のリストにない場合、それを追加 */}
-                            {set.exerciseId !== 0 && !filteredExercises.find(e => e.id === set.exerciseId) && (() => {
-                              const selectedExercise = exercises.find(e => e.id === set.exerciseId)
-                              return selectedExercise ? (
-                                <option
-                                  key={selectedExercise.id}
-                                  value={selectedExercise.id}
-                                  className="bg-slate-800"
-                                >
-                                  {selectedExercise.name}（{muscleGroupLabels[selectedExercise.muscle_group] || 'その他'}）
-                                </option>
-                              ) : null
-                            })()}
-                            {filteredExercises.map((exercise) => (
-                              <option
-                                key={exercise.id}
-                                value={exercise.id}
-                                className="bg-slate-800"
-                              >
-                                {exercise.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-400 mb-1">重量 (kg)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            value={set.weight}
-                            onChange={(e) => updateSet(set.id, 'weight', e.target.value)}
-                            placeholder="0"
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-400 mb-1">回数</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={set.reps}
-                            onChange={(e) => updateSet(set.id, 'reps', e.target.value)}
-                            placeholder="0"
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
 
         {/* メモ */}
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">

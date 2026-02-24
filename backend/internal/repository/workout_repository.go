@@ -89,6 +89,37 @@ func (r *WorkoutRepository) DeleteSetsByWorkoutID(workoutID uint64) error {
 	return r.db.Where("workout_id = ?", workoutID).Delete(&model.WorkoutSet{}).Error
 }
 
+// CreateWithSets creates a workout and all its sets in a single transaction.
+func (r *WorkoutRepository) CreateWithSets(workout *model.Workout, sets []*model.WorkoutSet) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(workout).Error; err != nil {
+			return err
+		}
+		for _, set := range sets {
+			set.WorkoutID = workout.ID
+			if err := tx.Create(set).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// ReplaceSetsByWorkoutID deletes existing sets and inserts replacements atomically.
+func (r *WorkoutRepository) ReplaceSetsByWorkoutID(workoutID uint64, sets []*model.WorkoutSet) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("workout_id = ?", workoutID).Delete(&model.WorkoutSet{}).Error; err != nil {
+			return err
+		}
+		for _, set := range sets {
+			if err := tx.Create(set).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // FindByUserIDAndMonth は指定月のワークアウトを取得
 func (r *WorkoutRepository) FindByUserIDAndMonth(userID uint64, year, month int) ([]model.Workout, error) {
 	var workouts []model.Workout

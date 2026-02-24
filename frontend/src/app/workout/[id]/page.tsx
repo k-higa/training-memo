@@ -377,6 +377,19 @@ export default function WorkoutDetailPage() {
                             <option value={0} className="bg-slate-800">
                               選択してください
                             </option>
+                            {/* 選択中の種目がフィルタリング後のリストにない場合、それを追加 */}
+                            {set.exerciseId !== 0 && !filteredExercises.find(e => e.id === set.exerciseId) && (() => {
+                              const selectedExercise = exercises.find(e => e.id === set.exerciseId)
+                              return selectedExercise ? (
+                                <option
+                                  key={selectedExercise.id}
+                                  value={selectedExercise.id}
+                                  className="bg-slate-800"
+                                >
+                                  {selectedExercise.name}（{muscleGroupLabels[selectedExercise.muscle_group] || 'その他'}）
+                                </option>
+                              ) : null
+                            })()}
                             {filteredExercises.map((exercise) => (
                               <option
                                 key={exercise.id}
