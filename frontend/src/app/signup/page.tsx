@@ -143,6 +143,18 @@ export default function SignupPage() {
               </div>
             </div>
 
+            <p className="text-xs text-gray-400 text-center">
+              登録することで
+              <Link href="/terms" className="text-purple-400 hover:text-purple-300 underline mx-1">
+                利用規約
+              </Link>
+              および
+              <Link href="/privacy" className="text-purple-400 hover:text-purple-300 underline mx-1">
+                プライバシーポリシー
+              </Link>
+              に同意したことになります。
+            </p>
+
             <button
               type="submit"
               disabled={loading}
