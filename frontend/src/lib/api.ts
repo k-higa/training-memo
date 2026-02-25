@@ -216,12 +216,39 @@ export interface CreateMenuInput {
   }[]
 }
 
+export interface AIGenerateMenuInput {
+  goal: string
+  fitness_level: string
+  days_per_week: number
+  duration_minutes: number
+  target_muscle_groups?: string[]
+  notes?: string
+}
+
+export interface AIGeneratedMenuItem {
+  exercise_id: number
+  order_number: number
+  target_sets: number
+  target_reps: number
+  target_weight?: number
+  note?: string
+  exercise?: Exercise
+}
+
+export interface AIGeneratedMenu {
+  name: string
+  description: string
+  items: AIGeneratedMenuItem[]
+}
+
 export const menuApi = {
   getAll: () => api.get<Menu[]>('/api/v1/menus'),
   getById: (id: number) => api.get<Menu>(`/api/v1/menus/${id}`),
   create: (data: CreateMenuInput) => api.post<Menu>('/api/v1/menus', data),
   update: (id: number, data: CreateMenuInput) => api.put<Menu>(`/api/v1/menus/${id}`, data),
   delete: (id: number) => api.delete(`/api/v1/menus/${id}`),
+  generateWithAI: (data: AIGenerateMenuInput) =>
+    api.post<AIGeneratedMenu>('/api/v1/menus/ai-generate', data),
 }
 
 // 体重記録関連

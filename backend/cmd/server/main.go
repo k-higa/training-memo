@@ -66,12 +66,13 @@ func main() {
 		authService := service.NewAuthService(userRepo)
 		workoutService := service.NewWorkoutService(workoutRepo, exerciseRepo)
 		menuService := service.NewMenuService(menuRepo, exerciseRepo)
+		aiMenuService := service.NewAIMenuService(exerciseRepo)
 		bodyWeightService := service.NewBodyWeightService(bodyWeightRepo)
 
 		// ハンドラーの初期化
 		authHandler := handler.NewAuthHandler(authService)
 		workoutHandler := handler.NewWorkoutHandler(workoutService)
-		menuHandler := handler.NewMenuHandler(menuService)
+		menuHandler := handler.NewMenuHandler(menuService, aiMenuService)
 		bodyWeightHandler := handler.NewBodyWeightHandler(bodyWeightService)
 
 		// API v1 グループ
@@ -110,6 +111,7 @@ func main() {
 		authGroup.GET("/stats/personal-bests", workoutHandler.GetPersonalBests)
 
 		// メニュー管理
+		authGroup.POST("/menus/ai-generate", menuHandler.GenerateMenuWithAI)
 		authGroup.POST("/menus", menuHandler.CreateMenu)
 		authGroup.GET("/menus", menuHandler.GetMenus)
 		authGroup.GET("/menus/:id", menuHandler.GetMenu)

@@ -10,11 +10,12 @@ import (
 )
 
 type MenuHandler struct {
-	menuService *service.MenuService
+	menuService   *service.MenuService
+	aiMenuService *service.AIMenuService
 }
 
-func NewMenuHandler(menuService *service.MenuService) *MenuHandler {
-	return &MenuHandler{menuService: menuService}
+func NewMenuHandler(menuService *service.MenuService, aiMenuService *service.AIMenuService) *MenuHandler {
+	return &MenuHandler{menuService: menuService, aiMenuService: aiMenuService}
 }
 
 func (h *MenuHandler) CreateMenu(c echo.Context) error {
@@ -121,6 +122,32 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, menu)
+}
+
+func (h *MenuHandler) GenerateMenuWithAI(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+
+	var input service.GenerateMenuInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid request body",
+		})
+	}
+
+	if input.Goal == "" || input.FitnessLevel == "" || input.DaysPerWeek == 0 || input.DurationMinutes == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "goal, fitness_level, days_per_week, duration_minutes are required",
+		})
+	}
+
+	output, err := h.aiMenuService.GenerateMenu(userID, &input)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, output)
 }
 
 func (h *MenuHandler) DeleteMenu(c echo.Context) error {

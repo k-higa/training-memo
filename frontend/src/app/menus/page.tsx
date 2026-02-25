@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Header } from '@/components/Header'
 import { menuApi, Menu, ApiError } from '@/lib/api'
 import { isAuthenticated } from '@/lib/auth'
-import { Plus, Dumbbell, Trash2, Edit, ChevronRight } from 'lucide-react'
+import { Plus, Dumbbell, Trash2, Edit, ChevronRight, Sparkles } from 'lucide-react'
 
 export default function MenusPage() {
   const router = useRouter()
@@ -76,13 +76,22 @@ export default function MenusPage() {
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-white">メニュー管理</h1>
-          <Link
-            href="/menus/new"
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            新規メニュー
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/menus/ai-generate"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+            >
+              <Sparkles className="h-4 w-4" />
+              AIで作成
+            </Link>
+            <Link
+              href="/menus/new"
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors border border-white/20"
+            >
+              <Plus className="h-4 w-4" />
+              手動で作成
+            </Link>
+          </div>
         </div>
 
         {menus.length === 0 ? (
