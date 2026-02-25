@@ -94,3 +94,15 @@ func (h *AuthHandler) Me(c echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
+func (h *AuthHandler) DeleteAccount(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+
+	if err := h.authService.DeleteAccount(userID); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "アカウントの削除に失敗しました",
+		})
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+

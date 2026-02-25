@@ -88,6 +88,7 @@ func main() {
 
 		// ユーザー
 		authGroup.GET("/auth/me", authHandler.Me)
+		authGroup.DELETE("/auth/account", authHandler.DeleteAccount)
 
 		// 種目
 		authGroup.GET("/exercises", workoutHandler.GetExercises)

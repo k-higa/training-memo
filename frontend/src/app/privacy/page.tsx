@@ -101,12 +101,27 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-semibold text-white mb-3">6. 保存期間</h2>
-              <p>
+              <h2 className="text-base font-semibold text-white mb-3">6. 保存期間とアカウント削除</h2>
+              <p className="mb-3">
                 ユーザーのデータは、アカウントが有効である限り保持します。
-                アカウント削除を希望する場合は、下記お問い合わせ先までご連絡ください。
-                削除依頼を受理してから30日以内にデータを削除します。
               </p>
+              <div className="p-3 bg-white/5 rounded-lg">
+                <p className="font-medium text-white mb-1">アカウント削除（退会）について</p>
+                <p>
+                  設定ページの「退会する」機能からアカウントを削除できます。
+                  削除操作を実行した時点で、以下のデータがすべて即時かつ完全に削除されます。
+                </p>
+                <ul className="mt-2 list-disc list-inside space-y-1 text-gray-400">
+                  <li>アカウント情報（メールアドレス・ニックネーム）</li>
+                  <li>すべてのトレーニング記録</li>
+                  <li>体重・体脂肪率の記録</li>
+                  <li>作成したトレーニングメニュー</li>
+                  <li>カスタム種目</li>
+                </ul>
+                <p className="mt-2 text-yellow-400/80 text-xs">
+                  ※ 削除操作は取り消せません。削除後のデータ復元には応じられません。
+                </p>
+              </div>
             </section>
 
             <section>

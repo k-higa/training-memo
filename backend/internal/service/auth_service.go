@@ -110,6 +110,10 @@ func (s *AuthService) GetUserByID(userID uint64) (*model.User, error) {
 	return s.userRepo.FindByID(userID)
 }
 
+func (s *AuthService) DeleteAccount(userID uint64) error {
+	return s.userRepo.DeleteWithAllData(userID)
+}
+
 func (s *AuthService) generateToken(user *model.User) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {

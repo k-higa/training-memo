@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Dumbbell, Home, Plus, History, Calendar, BarChart3, List, LogOut, ClipboardList, Scale } from 'lucide-react'
+import { Dumbbell, Home, Plus, History, Calendar, BarChart3, List, LogOut, ClipboardList, Scale, Settings } from 'lucide-react'
 import { removeToken } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
@@ -57,7 +57,18 @@ export function Header() {
           </nav>
 
           {/* ユーザーメニュー */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Link
+              href="/settings"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname === '/settings'
+                  ? 'bg-purple-600 text-white'
+                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <Settings className="h-5 w-5" />
+              <span className="hidden sm:block">設定</span>
+            </Link>
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors"

@@ -118,6 +118,7 @@ export const authApi = {
   login: (data: { email: string; password: string }) =>
     api.post<AuthResponse>('/api/v1/auth/login', data),
   me: () => api.get<User>('/api/v1/auth/me'),
+  deleteAccount: () => api.delete('/api/v1/auth/account'),
 }
 
 export const exerciseApi = {

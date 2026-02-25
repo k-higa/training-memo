@@ -45,3 +45,38 @@ func (r *UserRepository) ExistsByEmail(email string) (bool, error) {
 	return count > 0, nil
 }
 
+// DeleteWithAllData はユーザーに関連する全データをトランザクションで削除する
+func (r *UserRepository) DeleteWithAllData(userID uint64) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// workout_sets（workoutsを通じてuserに紐づく）
+		if err := tx.Exec("DELETE FROM workout_sets WHERE workout_id IN (SELECT id FROM workouts WHERE user_id = ?)", userID).Error; err != nil {
+			return err
+		}
+		// workouts
+		if err := tx.Where("user_id = ?", userID).Delete(&model.Workout{}).Error; err != nil {
+			return err
+		}
+		// menu_items（menusを通じてuserに紐づく）
+		if err := tx.Exec("DELETE FROM menu_items WHERE menu_id IN (SELECT id FROM menus WHERE user_id = ?)", userID).Error; err != nil {
+			return err
+		}
+		// menus
+		if err := tx.Where("user_id = ?", userID).Delete(&model.Menu{}).Error; err != nil {
+			return err
+		}
+		// body_weights
+		if err := tx.Where("user_id = ?", userID).Delete(&model.BodyWeight{}).Error; err != nil {
+			return err
+		}
+		// カスタム種目
+		if err := tx.Where("user_id = ? AND is_custom = true", userID).Delete(&model.Exercise{}).Error; err != nil {
+			return err
+		}
+		// ユーザー本体
+		if err := tx.Delete(&model.User{}, userID).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
