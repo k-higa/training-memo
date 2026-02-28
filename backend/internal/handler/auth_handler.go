@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -39,7 +40,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 
 	response, err := h.authService.Register(&input)
 	if err != nil {
-		if err == service.ErrEmailAlreadyExists {
+		if errors.Is(err, service.ErrEmailAlreadyExists) {
 			return c.JSON(http.StatusConflict, map[string]string{
 				"error": "email already exists",
 			})
@@ -68,7 +69,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	response, err := h.authService.Login(&input)
 	if err != nil {
-		if err == service.ErrInvalidCredentials {
+		if errors.Is(err, service.ErrInvalidCredentials) {
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"error": "invalid email or password",
 			})

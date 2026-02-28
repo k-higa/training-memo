@@ -2,21 +2,18 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/training-memo/backend/internal/model"
-	"github.com/training-memo/backend/internal/repository"
-)
-
-var (
-	ErrMenuNotFound = errors.New("menu not found")
+	"gorm.io/gorm"
 )
 
 type MenuService struct {
-	menuRepo     *repository.MenuRepository
-	exerciseRepo *repository.ExerciseRepository
+	menuRepo     MenuRepository
+	exerciseRepo ExerciseRepository
 }
 
-func NewMenuService(menuRepo *repository.MenuRepository, exerciseRepo *repository.ExerciseRepository) *MenuService {
+func NewMenuService(menuRepo MenuRepository, exerciseRepo ExerciseRepository) *MenuService {
 	return &MenuService{
 		menuRepo:     menuRepo,
 		exerciseRepo: exerciseRepo,
@@ -38,6 +35,8 @@ type CreateItemInput struct {
 	Note         *string  `json:"note"`
 }
 
+type UpdateMenuInput = CreateMenuInput
+
 func (s *MenuService) CreateMenu(userID uint64, input *CreateMenuInput) (*model.Menu, error) {
 	menu := &model.Menu{
 		UserID:      userID,
@@ -45,14 +44,9 @@ func (s *MenuService) CreateMenu(userID uint64, input *CreateMenuInput) (*model.
 		Description: input.Description,
 	}
 
-	if err := s.menuRepo.Create(menu); err != nil {
-		return nil, err
-	}
-
-	// アイテムを追加
-	for _, itemInput := range input.Items {
-		item := &model.MenuItem{
-			MenuID:       menu.ID,
+	items := make([]*model.MenuItem, len(input.Items))
+	for i, itemInput := range input.Items {
+		items[i] = &model.MenuItem{
 			ExerciseID:   itemInput.ExerciseID,
 			OrderNumber:  itemInput.OrderNumber,
 			TargetSets:   itemInput.TargetSets,
@@ -60,19 +54,22 @@ func (s *MenuService) CreateMenu(userID uint64, input *CreateMenuInput) (*model.
 			TargetWeight: itemInput.TargetWeight,
 			Note:         itemInput.Note,
 		}
-		if err := s.menuRepo.AddItem(item); err != nil {
-			return nil, err
-		}
 	}
 
-	// 再取得
+	if err := s.menuRepo.CreateWithItems(menu, items); err != nil {
+		return nil, err
+	}
+
 	return s.menuRepo.FindByID(menu.ID)
 }
 
 func (s *MenuService) GetMenu(userID, menuID uint64) (*model.Menu, error) {
 	menu, err := s.menuRepo.FindByID(menuID)
 	if err != nil {
-		return nil, ErrMenuNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrMenuNotFound
+		}
+		return nil, fmt.Errorf("finding menu: %w", err)
 	}
 
 	if menu.UserID != userID {
@@ -86,10 +83,13 @@ func (s *MenuService) GetMenus(userID uint64) ([]model.Menu, error) {
 	return s.menuRepo.FindByUserID(userID)
 }
 
-func (s *MenuService) UpdateMenu(userID, menuID uint64, input *CreateMenuInput) (*model.Menu, error) {
+func (s *MenuService) UpdateMenu(userID, menuID uint64, input *UpdateMenuInput) (*model.Menu, error) {
 	menu, err := s.menuRepo.FindByID(menuID)
 	if err != nil {
-		return nil, ErrMenuNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrMenuNotFound
+		}
+		return nil, fmt.Errorf("finding menu: %w", err)
 	}
 
 	if menu.UserID != userID {
@@ -103,14 +103,9 @@ func (s *MenuService) UpdateMenu(userID, menuID uint64, input *CreateMenuInput) 
 		return nil, err
 	}
 
-	// 既存のアイテムを削除
-	if err := s.menuRepo.DeleteItemsByMenuID(menuID); err != nil {
-		return nil, err
-	}
-
-	// 新しいアイテムを追加
-	for _, itemInput := range input.Items {
-		item := &model.MenuItem{
+	items := make([]*model.MenuItem, len(input.Items))
+	for i, itemInput := range input.Items {
+		items[i] = &model.MenuItem{
 			MenuID:       menuID,
 			ExerciseID:   itemInput.ExerciseID,
 			OrderNumber:  itemInput.OrderNumber,
@@ -119,9 +114,10 @@ func (s *MenuService) UpdateMenu(userID, menuID uint64, input *CreateMenuInput) 
 			TargetWeight: itemInput.TargetWeight,
 			Note:         itemInput.Note,
 		}
-		if err := s.menuRepo.AddItem(item); err != nil {
-			return nil, err
-		}
+	}
+
+	if err := s.menuRepo.ReplaceItemsByMenuID(menuID, items); err != nil {
+		return nil, err
 	}
 
 	return s.menuRepo.FindByID(menuID)
@@ -130,7 +126,10 @@ func (s *MenuService) UpdateMenu(userID, menuID uint64, input *CreateMenuInput) 
 func (s *MenuService) DeleteMenu(userID, menuID uint64) error {
 	menu, err := s.menuRepo.FindByID(menuID)
 	if err != nil {
-		return ErrMenuNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrMenuNotFound
+		}
+		return fmt.Errorf("finding menu: %w", err)
 	}
 
 	if menu.UserID != userID {
@@ -139,4 +138,3 @@ func (s *MenuService) DeleteMenu(userID, menuID uint64) error {
 
 	return s.menuRepo.Delete(menuID)
 }
-

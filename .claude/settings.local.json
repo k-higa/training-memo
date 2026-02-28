@@ -4,7 +4,13 @@
       "Bash(cd /Users/k-higa/workspace/traning-memo/backend && go build ./... 2>&1)",
       "Bash(go test:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebSearch",
+      "Bash(lsof:*)",
+      "Bash(open:*)",
+      "Bash(go vet:*)",
+      "Bash(grep:*)",
+      "Bash(docker compose:*)"
     ]
   }
 }

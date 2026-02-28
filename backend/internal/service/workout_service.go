@@ -2,23 +2,20 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/training-memo/backend/internal/model"
 	"github.com/training-memo/backend/internal/repository"
-)
-
-var (
-	ErrWorkoutNotFound = errors.New("workout not found")
-	ErrUnauthorized    = errors.New("unauthorized")
+	"gorm.io/gorm"
 )
 
 type WorkoutService struct {
-	workoutRepo  *repository.WorkoutRepository
-	exerciseRepo *repository.ExerciseRepository
+	workoutRepo  WorkoutRepository
+	exerciseRepo ExerciseRepository
 }
 
-func NewWorkoutService(workoutRepo *repository.WorkoutRepository, exerciseRepo *repository.ExerciseRepository) *WorkoutService {
+func NewWorkoutService(workoutRepo WorkoutRepository, exerciseRepo ExerciseRepository) *WorkoutService {
 	return &WorkoutService{
 		workoutRepo:  workoutRepo,
 		exerciseRepo: exerciseRepo,
@@ -38,10 +35,19 @@ type CreateSetInput struct {
 	Reps       uint16  `json:"reps" validate:"required,min=1"`
 }
 
+type UpdateSetInput = CreateSetInput
+
 type UpdateWorkoutInput struct {
 	Memo *string          `json:"memo"`
-	Sets []CreateSetInput `json:"sets" validate:"required,min=1,dive"`
+	Sets []UpdateSetInput `json:"sets" validate:"required,min=1,dive"`
 }
+
+type CreateExerciseInput struct {
+	Name        string `json:"name" validate:"required,min=1,max=100"`
+	MuscleGroup string `json:"muscle_group" validate:"required"`
+}
+
+type UpdateExerciseInput = CreateExerciseInput
 
 type WorkoutListResponse struct {
 	Workouts   []model.Workout `json:"workouts"`
@@ -54,7 +60,7 @@ type WorkoutListResponse struct {
 func (s *WorkoutService) CreateWorkout(userID uint64, input *CreateWorkoutInput) (*model.Workout, error) {
 	date, err := time.Parse("2006-01-02", input.Date)
 	if err != nil {
-		return nil, errors.New("invalid date format")
+		return nil, fmt.Errorf("%w: %s", ErrInvalidDateFormat, input.Date)
 	}
 
 	workout := &model.Workout{
@@ -73,19 +79,20 @@ func (s *WorkoutService) CreateWorkout(userID uint64, input *CreateWorkoutInput)
 		}
 	}
 
-	// ワークアウトとセットをアトミックに作成
 	if err := s.workoutRepo.CreateWithSets(workout, sets); err != nil {
 		return nil, err
 	}
 
-	// セット情報を含めて再取得
 	return s.workoutRepo.FindByID(workout.ID)
 }
 
 func (s *WorkoutService) GetWorkout(userID, workoutID uint64) (*model.Workout, error) {
 	workout, err := s.workoutRepo.FindByID(workoutID)
 	if err != nil {
-		return nil, ErrWorkoutNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, fmt.Errorf("finding workout: %w", err)
 	}
 
 	if workout.UserID != userID {
@@ -98,7 +105,7 @@ func (s *WorkoutService) GetWorkout(userID, workoutID uint64) (*model.Workout, e
 func (s *WorkoutService) GetWorkoutByDate(userID uint64, date string) (*model.Workout, error) {
 	dateTime, err := time.Parse("2006-01-02", date)
 	if err != nil {
-		return nil, errors.New("invalid date format")
+		return nil, fmt.Errorf("%w: %s", ErrInvalidDateFormat, date)
 	}
 
 	return s.workoutRepo.FindByUserIDAndDate(userID, dateTime)
@@ -141,7 +148,10 @@ func (s *WorkoutService) GetWorkoutList(userID uint64, page, perPage int) (*Work
 func (s *WorkoutService) UpdateWorkout(userID, workoutID uint64, input *UpdateWorkoutInput) (*model.Workout, error) {
 	workout, err := s.workoutRepo.FindByID(workoutID)
 	if err != nil {
-		return nil, ErrWorkoutNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, fmt.Errorf("finding workout: %w", err)
 	}
 
 	if workout.UserID != userID {
@@ -165,7 +175,6 @@ func (s *WorkoutService) UpdateWorkout(userID, workoutID uint64, input *UpdateWo
 		}
 	}
 
-	// 既存セットの削除と新セットの追加をアトミックに実行
 	if err := s.workoutRepo.ReplaceSetsByWorkoutID(workoutID, sets); err != nil {
 		return nil, err
 	}
@@ -176,7 +185,10 @@ func (s *WorkoutService) UpdateWorkout(userID, workoutID uint64, input *UpdateWo
 func (s *WorkoutService) DeleteWorkout(userID, workoutID uint64) error {
 	workout, err := s.workoutRepo.FindByID(workoutID)
 	if err != nil {
-		return ErrWorkoutNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrWorkoutNotFound
+		}
+		return fmt.Errorf("finding workout: %w", err)
 	}
 
 	if workout.UserID != userID {
@@ -215,17 +227,6 @@ func (s *WorkoutService) GetExerciseProgress(userID uint64, exerciseID uint64) (
 }
 
 // カスタム種目作成
-type CreateExerciseInput struct {
-	Name        string `json:"name" validate:"required,min=1,max=100"`
-	MuscleGroup string `json:"muscle_group" validate:"required"`
-}
-
-var (
-	ErrExerciseNotFound  = errors.New("exercise not found")
-	ErrExerciseInUse     = errors.New("exercise is in use")
-	ErrNotCustomExercise = errors.New("cannot modify preset exercise")
-)
-
 func (s *WorkoutService) CreateCustomExercise(userID uint64, input *CreateExerciseInput) (*model.Exercise, error) {
 	exercise := &model.Exercise{
 		Name:        input.Name,
@@ -245,10 +246,13 @@ func (s *WorkoutService) GetCustomExercises(userID uint64) ([]model.Exercise, er
 	return s.exerciseRepo.FindCustomByUserID(userID)
 }
 
-func (s *WorkoutService) UpdateCustomExercise(userID uint64, exerciseID uint64, input *CreateExerciseInput) (*model.Exercise, error) {
+func (s *WorkoutService) UpdateCustomExercise(userID uint64, exerciseID uint64, input *UpdateExerciseInput) (*model.Exercise, error) {
 	exercise, err := s.exerciseRepo.FindByID(exerciseID)
 	if err != nil {
-		return nil, ErrExerciseNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrExerciseNotFound
+		}
+		return nil, fmt.Errorf("finding exercise: %w", err)
 	}
 
 	if !exercise.IsCustom || exercise.UserID == nil || *exercise.UserID != userID {
@@ -268,14 +272,16 @@ func (s *WorkoutService) UpdateCustomExercise(userID uint64, exerciseID uint64, 
 func (s *WorkoutService) DeleteCustomExercise(userID uint64, exerciseID uint64) error {
 	exercise, err := s.exerciseRepo.FindByID(exerciseID)
 	if err != nil {
-		return ErrExerciseNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrExerciseNotFound
+		}
+		return fmt.Errorf("finding exercise: %w", err)
 	}
 
 	if !exercise.IsCustom || exercise.UserID == nil || *exercise.UserID != userID {
 		return ErrNotCustomExercise
 	}
 
-	// 使用中かチェック
 	inUse, err := s.exerciseRepo.IsUsedInWorkouts(exerciseID)
 	if err != nil {
 		return err
@@ -286,4 +292,3 @@ func (s *WorkoutService) DeleteCustomExercise(userID uint64, exerciseID uint64) 
 
 	return s.exerciseRepo.Delete(exerciseID)
 }
-

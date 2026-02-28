@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -55,12 +56,12 @@ func (h *WorkoutHandler) GetWorkout(c echo.Context) error {
 
 	workout, err := h.workoutService.GetWorkout(userID, workoutID)
 	if err != nil {
-		if err == service.ErrWorkoutNotFound {
+		if errors.Is(err, service.ErrWorkoutNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "workout not found",
 			})
 		}
-		if err == service.ErrUnauthorized {
+		if errors.Is(err, service.ErrUnauthorized) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "unauthorized",
 			})
@@ -135,12 +136,12 @@ func (h *WorkoutHandler) UpdateWorkout(c echo.Context) error {
 
 	workout, err := h.workoutService.UpdateWorkout(userID, workoutID, &input)
 	if err != nil {
-		if err == service.ErrWorkoutNotFound {
+		if errors.Is(err, service.ErrWorkoutNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "workout not found",
 			})
 		}
-		if err == service.ErrUnauthorized {
+		if errors.Is(err, service.ErrUnauthorized) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "unauthorized",
 			})
@@ -164,12 +165,12 @@ func (h *WorkoutHandler) DeleteWorkout(c echo.Context) error {
 	}
 
 	if err := h.workoutService.DeleteWorkout(userID, workoutID); err != nil {
-		if err == service.ErrWorkoutNotFound {
+		if errors.Is(err, service.ErrWorkoutNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "workout not found",
 			})
 		}
-		if err == service.ErrUnauthorized {
+		if errors.Is(err, service.ErrUnauthorized) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "unauthorized",
 			})
@@ -342,12 +343,12 @@ func (h *WorkoutHandler) UpdateCustomExercise(c echo.Context) error {
 
 	exercise, err := h.workoutService.UpdateCustomExercise(userID, exerciseID, &input)
 	if err != nil {
-		if err == service.ErrExerciseNotFound {
+		if errors.Is(err, service.ErrExerciseNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "exercise not found",
 			})
 		}
-		if err == service.ErrNotCustomExercise {
+		if errors.Is(err, service.ErrNotCustomExercise) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "cannot modify preset exercise",
 			})
@@ -372,17 +373,17 @@ func (h *WorkoutHandler) DeleteCustomExercise(c echo.Context) error {
 	}
 
 	if err := h.workoutService.DeleteCustomExercise(userID, exerciseID); err != nil {
-		if err == service.ErrExerciseNotFound {
+		if errors.Is(err, service.ErrExerciseNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "exercise not found",
 			})
 		}
-		if err == service.ErrNotCustomExercise {
+		if errors.Is(err, service.ErrNotCustomExercise) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "cannot delete preset exercise",
 			})
 		}
-		if err == service.ErrExerciseInUse {
+		if errors.Is(err, service.ErrExerciseInUse) {
 			return c.JSON(http.StatusConflict, map[string]string{
 				"error": "exercise is in use",
 			})

@@ -2,15 +2,16 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/training-memo/backend/internal/model"
-	"github.com/training-memo/backend/internal/repository"
 )
 
 // GenerateMenuInput はAIメニュー生成の入力パラメータ
@@ -66,8 +67,8 @@ type openAIResponse struct {
 
 // AIからのJSONレスポンス（パース用）
 type aiMenuJSON struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
 	Items       []aiMenuItemJSON `json:"items"`
 }
 
@@ -81,14 +82,14 @@ type aiMenuItemJSON struct {
 }
 
 type AIMenuService struct {
-	exerciseRepo *repository.ExerciseRepository
+	exerciseRepo ExerciseRepository
 }
 
-func NewAIMenuService(exerciseRepo *repository.ExerciseRepository) *AIMenuService {
+func NewAIMenuService(exerciseRepo ExerciseRepository) *AIMenuService {
 	return &AIMenuService{exerciseRepo: exerciseRepo}
 }
 
-func (s *AIMenuService) GenerateMenu(userID uint64, input *GenerateMenuInput) (*GenerateMenuOutput, error) {
+func (s *AIMenuService) GenerateMenu(ctx context.Context, userID uint64, input *GenerateMenuInput) (*GenerateMenuOutput, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("OPENAI_API_KEY が設定されていません")
@@ -125,14 +126,14 @@ func (s *AIMenuService) GenerateMenu(userID uint64, input *GenerateMenuInput) (*
 		return nil, fmt.Errorf("リクエストの作成に失敗しました: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(bodyBytes))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("HTTPリクエストの作成に失敗しました: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("OpenAI APIの呼び出しに失敗しました: %w", err)

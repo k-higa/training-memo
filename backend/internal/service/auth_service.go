@@ -2,33 +2,28 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/training-memo/backend/internal/model"
-	"github.com/training-memo/backend/internal/repository"
 	"golang.org/x/crypto/bcrypt"
-)
-
-var (
-	ErrInvalidCredentials = errors.New("invalid email or password")
-	ErrEmailAlreadyExists = errors.New("email already exists")
-	ErrUserNotFound       = errors.New("user not found")
+	"gorm.io/gorm"
 )
 
 type AuthService struct {
-	userRepo *repository.UserRepository
+	userRepo UserRepository
 }
 
-func NewAuthService(userRepo *repository.UserRepository) *AuthService {
+func NewAuthService(userRepo UserRepository) *AuthService {
 	return &AuthService{userRepo: userRepo}
 }
 
 type RegisterInput struct {
-	Email    string  `json:"email" validate:"required,email"`
-	Password string  `json:"password" validate:"required,min=8"`
-	Name     string  `json:"name" validate:"required,min=1,max=100"`
+	Email    string   `json:"email" validate:"required,email"`
+	Password string   `json:"password" validate:"required,min=8"`
+	Name     string   `json:"name" validate:"required,min=1,max=100"`
 	Height   *float64 `json:"height"`
 }
 
@@ -43,7 +38,6 @@ type AuthResponse struct {
 }
 
 func (s *AuthService) Register(input *RegisterInput) (*AuthResponse, error) {
-	// メールアドレスの重複チェック
 	exists, err := s.userRepo.ExistsByEmail(input.Email)
 	if err != nil {
 		return nil, err
@@ -52,13 +46,11 @@ func (s *AuthService) Register(input *RegisterInput) (*AuthResponse, error) {
 		return nil, ErrEmailAlreadyExists
 	}
 
-	// パスワードのハッシュ化
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	// ユーザー作成
 	user := &model.User{
 		Email:        input.Email,
 		PasswordHash: string(hashedPassword),
@@ -70,7 +62,6 @@ func (s *AuthService) Register(input *RegisterInput) (*AuthResponse, error) {
 		return nil, err
 	}
 
-	// JWT生成
 	token, err := s.generateToken(user)
 	if err != nil {
 		return nil, err
@@ -83,18 +74,18 @@ func (s *AuthService) Register(input *RegisterInput) (*AuthResponse, error) {
 }
 
 func (s *AuthService) Login(input *LoginInput) (*AuthResponse, error) {
-	// メールアドレスでユーザーを検索
 	user, err := s.userRepo.FindByEmail(input.Email)
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, fmt.Errorf("finding user: %w", err)
 	}
 
-	// パスワード検証
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
 
-	// JWT生成
 	token, err := s.generateToken(user)
 	if err != nil {
 		return nil, err
@@ -117,13 +108,13 @@ func (s *AuthService) DeleteAccount(userID uint64) error {
 func (s *AuthService) generateToken(user *model.User) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default-secret-key"
+		return "", fmt.Errorf("JWT_SECRET is not set")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,
-		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7日間有効
+		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
 	})
 
 	return token.SignedString([]byte(secret))
@@ -132,7 +123,7 @@ func (s *AuthService) generateToken(user *model.User) (string, error) {
 func ValidateToken(tokenString string) (uint64, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default-secret-key"
+		return 0, fmt.Errorf("JWT_SECRET is not set")
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -153,4 +144,3 @@ func ValidateToken(tokenString string) (uint64, error) {
 
 	return 0, errors.New("invalid token")
 }
-

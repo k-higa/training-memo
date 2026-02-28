@@ -54,3 +54,32 @@ func (r *MenuRepository) AddItem(item *model.MenuItem) error {
 func (r *MenuRepository) DeleteItemsByMenuID(menuID uint64) error {
 	return r.db.Where("menu_id = ?", menuID).Delete(&model.MenuItem{}).Error
 }
+
+func (r *MenuRepository) CreateWithItems(menu *model.Menu, items []*model.MenuItem) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(menu).Error; err != nil {
+			return err
+		}
+		for _, item := range items {
+			item.MenuID = menu.ID
+			if err := tx.Create(item).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *MenuRepository) ReplaceItemsByMenuID(menuID uint64, items []*model.MenuItem) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("menu_id = ?", menuID).Delete(&model.MenuItem{}).Error; err != nil {
+			return err
+		}
+		for _, item := range items {
+			if err := tx.Create(item).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

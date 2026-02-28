@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/training-memo/backend/internal/model"
@@ -56,6 +57,16 @@ func (r *MockUserRepository) Update(user *model.User) error {
 func (r *MockUserRepository) ExistsByEmail(email string) (bool, error) {
 	_, ok := r.users[email]
 	return ok, nil
+}
+
+func (r *MockUserRepository) DeleteWithAllData(userID uint64) error {
+	for email, user := range r.users {
+		if user.ID == userID {
+			delete(r.users, email)
+			return nil
+		}
+	}
+	return ErrUserNotFound
 }
 
 func TestAuthService_Register(t *testing.T) {
@@ -165,7 +176,7 @@ func TestAuthService_Login(t *testing.T) {
 		repo := NewMockUserRepository()
 
 		_, err := repo.FindByEmail("notfound@example.com")
-		if err != ErrUserNotFound {
+		if !errors.Is(err, ErrUserNotFound) {
 			t.Error("存在しないユーザーでErrUserNotFoundが返るべき")
 		}
 	})

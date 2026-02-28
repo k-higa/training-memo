@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -111,12 +112,12 @@ func (h *BodyWeightHandler) Delete(c echo.Context) error {
 
 	err = h.bodyWeightService.Delete(userID, recordID)
 	if err != nil {
-		if err == service.ErrBodyWeightNotFound {
+		if errors.Is(err, service.ErrBodyWeightNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "record not found",
 			})
 		}
-		if err == service.ErrUnauthorized {
+		if errors.Is(err, service.ErrUnauthorized) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "unauthorized",
 			})

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -69,12 +70,12 @@ func (h *MenuHandler) GetMenu(c echo.Context) error {
 
 	menu, err := h.menuService.GetMenu(userID, menuID)
 	if err != nil {
-		if err == service.ErrMenuNotFound {
+		if errors.Is(err, service.ErrMenuNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "menu not found",
 			})
 		}
-		if err == service.ErrUnauthorized {
+		if errors.Is(err, service.ErrUnauthorized) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "unauthorized",
 			})
@@ -97,7 +98,7 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 		})
 	}
 
-	var input service.CreateMenuInput
+	var input service.UpdateMenuInput
 	if err := c.Bind(&input); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "invalid request body",
@@ -106,12 +107,12 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 
 	menu, err := h.menuService.UpdateMenu(userID, menuID, &input)
 	if err != nil {
-		if err == service.ErrMenuNotFound {
+		if errors.Is(err, service.ErrMenuNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "menu not found",
 			})
 		}
-		if err == service.ErrUnauthorized {
+		if errors.Is(err, service.ErrUnauthorized) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "unauthorized",
 			})
@@ -140,7 +141,7 @@ func (h *MenuHandler) GenerateMenuWithAI(c echo.Context) error {
 		})
 	}
 
-	output, err := h.aiMenuService.GenerateMenu(userID, &input)
+	output, err := h.aiMenuService.GenerateMenu(c.Request().Context(), userID, &input)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -162,12 +163,12 @@ func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 
 	err = h.menuService.DeleteMenu(userID, menuID)
 	if err != nil {
-		if err == service.ErrMenuNotFound {
+		if errors.Is(err, service.ErrMenuNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{
 				"error": "menu not found",
 			})
 		}
-		if err == service.ErrUnauthorized {
+		if errors.Is(err, service.ErrUnauthorized) {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "unauthorized",
 			})

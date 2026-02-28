@@ -2,21 +2,18 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/training-memo/backend/internal/model"
-	"github.com/training-memo/backend/internal/repository"
-)
-
-var (
-	ErrBodyWeightNotFound = errors.New("body weight record not found")
+	"gorm.io/gorm"
 )
 
 type BodyWeightService struct {
-	bodyWeightRepo *repository.BodyWeightRepository
+	bodyWeightRepo BodyWeightRepository
 }
 
-func NewBodyWeightService(bodyWeightRepo *repository.BodyWeightRepository) *BodyWeightService {
+func NewBodyWeightService(bodyWeightRepo BodyWeightRepository) *BodyWeightService {
 	return &BodyWeightService{
 		bodyWeightRepo: bodyWeightRepo,
 	}
@@ -35,33 +32,34 @@ type BodyWeightListResponse struct {
 func (s *BodyWeightService) CreateOrUpdate(userID uint64, input *CreateBodyWeightInput) (*model.BodyWeight, error) {
 	date, err := time.Parse("2006-01-02", input.Date)
 	if err != nil {
-		return nil, errors.New("invalid date format")
+		return nil, fmt.Errorf("%w: %s", ErrInvalidDateFormat, input.Date)
 	}
 
-	// 同日の記録があれば更新
 	existing, err := s.bodyWeightRepo.FindByUserIDAndDate(userID, date)
-	if err == nil && existing != nil {
-		existing.Weight = input.Weight
-		existing.BodyFatPercentage = input.BodyFatPercentage
-		if err := s.bodyWeightRepo.Update(existing); err != nil {
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("finding body weight record: %w", err)
+		}
+		// not found → create new
+		record := &model.BodyWeight{
+			UserID:            userID,
+			Date:              date,
+			Weight:            input.Weight,
+			BodyFatPercentage: input.BodyFatPercentage,
+		}
+		if err := s.bodyWeightRepo.Create(record); err != nil {
 			return nil, err
 		}
-		return existing, nil
+		return record, nil
 	}
 
-	// 新規作成
-	record := &model.BodyWeight{
-		UserID:            userID,
-		Date:              date,
-		Weight:            input.Weight,
-		BodyFatPercentage: input.BodyFatPercentage,
-	}
-
-	if err := s.bodyWeightRepo.Create(record); err != nil {
+	// found → update
+	existing.Weight = input.Weight
+	existing.BodyFatPercentage = input.BodyFatPercentage
+	if err := s.bodyWeightRepo.Update(existing); err != nil {
 		return nil, err
 	}
-
-	return record, nil
+	return existing, nil
 }
 
 func (s *BodyWeightService) GetRecords(userID uint64, limit int) ([]model.BodyWeight, error) {
@@ -71,11 +69,11 @@ func (s *BodyWeightService) GetRecords(userID uint64, limit int) ([]model.BodyWe
 func (s *BodyWeightService) GetRecordsByDateRange(userID uint64, startDate, endDate string) ([]model.BodyWeight, error) {
 	start, err := time.Parse("2006-01-02", startDate)
 	if err != nil {
-		return nil, errors.New("invalid start date format")
+		return nil, fmt.Errorf("%w: %s", ErrInvalidDateFormat, startDate)
 	}
 	end, err := time.Parse("2006-01-02", endDate)
 	if err != nil {
-		return nil, errors.New("invalid end date format")
+		return nil, fmt.Errorf("%w: %s", ErrInvalidDateFormat, endDate)
 	}
 
 	return s.bodyWeightRepo.FindByUserIDAndDateRange(userID, start, end)
@@ -88,7 +86,10 @@ func (s *BodyWeightService) GetLatest(userID uint64) (*model.BodyWeight, error) 
 func (s *BodyWeightService) Delete(userID uint64, recordID uint64) error {
 	record, err := s.bodyWeightRepo.FindByID(recordID)
 	if err != nil {
-		return ErrBodyWeightNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrBodyWeightNotFound
+		}
+		return fmt.Errorf("finding body weight record: %w", err)
 	}
 
 	if record.UserID != userID {
@@ -97,4 +98,3 @@ func (s *BodyWeightService) Delete(userID uint64, recordID uint64) error {
 
 	return s.bodyWeightRepo.Delete(recordID)
 }
-
